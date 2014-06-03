@@ -1,4 +1,4 @@
-machine_learning_legislation
+Machine Learning Legislation
 ============================
 
 # Team
