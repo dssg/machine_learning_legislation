@@ -1,5 +1,10 @@
 Machine Learning Legislation
 ============================
+There is a need among the advocacy and research communities to dissect bills quickly. These long and often mind-numbing documents are had to keep track of as changes come and go. This project will create tools to help in the analysis and access of government bills.
+
+One primary use case is spending bills. This project will help create a database of spending; going through the text of spending bills to identify and organizing the what, where, how much, and who.
+
+We will use two APIs provided by the Sunlight Foundation for this project to get access to machine readable versions of the bills.
 
 # Team
 - Matthew Heston
