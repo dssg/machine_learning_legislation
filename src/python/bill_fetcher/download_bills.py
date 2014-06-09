@@ -58,9 +58,13 @@ def handle_bill(bill, output_folder):
             version_folder = os.path.join(bill_folder, version_code)
             if not os.path.exists(version_folder):
                 os.mkdir(version_folder)
-            v_content = download_bill_version(url)
             version_path = os.path.join(version_folder, bill_version_id)
-            write_bill_version(version_path, v_content)
+            if os.path.exists(version_path):
+                print "%s already exists at %s, ignoring"%(bill_version_id, version_path)
+                continue
+            else:
+                v_content = download_bill_version(url)
+                write_bill_version(version_path, v_content)
     
     
 def main():
@@ -78,7 +82,7 @@ def main():
         try:
             handle_bill(bills[i], sys.argv[1])
         except Exception as exp:
-            print "failed to process bill %d"%(i), exp
+            print "failed to process bill %d" %(i), exp
         
     
     
