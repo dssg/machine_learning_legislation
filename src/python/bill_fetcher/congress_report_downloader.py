@@ -154,19 +154,16 @@ def download_and_write_report_as_zip(report_id, base_dir):
     filenames = zfile.namelist()
     metadata_file = [name for name in filenames if name.endswith('mods.xml')][0]
     path = construct_write_folder(base_dir, report_id)
-    htm_file = [name for name in filenames if name.endswith('htm')]
-    if len(htm_file) > 1:
-        print "report %s had more than one htm file, how to proceed?!!!"
-    else:
-        tmp_dir = tempfile.gettempdir()
-        htm_file = htm_file[0]
+    tmp_dir = tempfile.gettempdir()
+    htm_files = [name for name in filenames if name.endswith('htm')]
+    zfile.extract(metadata_file, tmp_dir)
+    metadata_file_name = metadata_file.split('/')[-1]
+    shutil.move(os.path.join(tmp_dir, metadata_file), os.path.join(path, metadata_file_name))
+    for htm_file in htm_files:
         htm_file_name = htm_file.split('/')[-1]
         zfile.extract(htm_file, tmp_dir)
-        shutil.move(os.path.join(tmp_dir, htm_file), os.path.join(path, report_id))
-        zfile.extract(metadata_file, tmp_dir)
-        metadata_file_name = metadata_file.split('/')[-1]
-        shutil.move(os.path.join(tmp_dir, metadata_file), os.path.join(path, metadata_file_name))
-        shutil.rmtree(tmp_dir)
+        shutil.move(os.path.join(tmp_dir, htm_file), os.path.join(path, htm_file_name[5:-4]))# CRPT-107hrpt640-pt1.htm becomes 107hrpt640-pt1        
+    shutil.rmtree(tmp_dir)
        
     
 def find_missing_report_ids(reportsfile, outdir):
@@ -174,7 +171,7 @@ def find_missing_report_ids(reportsfile, outdir):
         content = [line.strip() for line in f.readlines() if len(line) > 1]
     for rid in content:
         path = construct_write_folder(outdir, rid)
-        if not os.path.exists(os.path.join(path,rid)):
+        if not os.path.exists(os.path.join(path,rid)) and not os.path.exists(os.path.join(path,rid+'-pt1')):
             print rid
     
 
