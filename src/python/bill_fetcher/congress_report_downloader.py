@@ -1,8 +1,11 @@
-import os, sys
+import os, sys, io
 import httplib
 import argparse
 import urllib2
 import codecs
+import zipfile
+import shutil
+import tempfile
 
 def get_max_congress_report_number(congress, chamber="hrpt"):
     """
@@ -71,6 +74,10 @@ def download_metadata(report_id):
     """
     url = "http://www.gpo.gov/fdsys/pkg/CRPT-%s/mods.xml"%(report_id)
     return download(url).decode('utf8')
+
+def download_zipfile(report_id):
+    url = "http://www.gpo.gov/fdsys/pkg/CRPT-%s.zip"%(report_id)
+    return download(url) 
     
 def download(url, retry_attempts=5):
     """
@@ -117,6 +124,7 @@ def generate_reports_for_congress(congress, chamber="hrpt"):
 def write(path, content):
     """
     writes the content of a report id under the base_dir in the proper path
+    content should be unicode, file is utf8 encoded
     """
     with codecs.open(path,'w','utf8') as f:
         f.write(content)
@@ -138,24 +146,75 @@ def download_and_write_report(report_id, base_dir):
     write_dir = construct_write_folder(base_dir, report_id)
     write(os.path.join(write_dir,report_id), report_content)
     write(os.path.join(write_dir,"mods.xml"), report_metadata)
+    
+def download_and_write_report_as_zip(report_id, base_dir):
+    content = download_zipfile(report_id)
+    bio = io.BytesIO(bytearray(content))
+    zfile = zipfile.ZipFile(io.BufferedReader(bio))
+    filenames = zfile.namelist()
+    metadata_file = [name for name in filenames if name.endswith('mods.xml')][0]
+    path = construct_write_folder(base_dir, report_id)
+    htm_file = [name for name in filenames if name.endswith('htm')]
+    if len(htm_file) > 1:
+        print "report %s had more than one htm file, how to proceed?!!!"
+    else:
+        tmp_dir = tempfile.gettempdir()
+        htm_file = htm_file[0]
+        htm_file_name = htm_file.split('/')[-1]
+        zfile.extract(htm_file, tmp_dir)
+        shutil.move(os.path.join(tmp_dir, htm_file), os.path.join(path, report_id))
+        zfile.extract(metadata_file, tmp_dir)
+        metadata_file_name = metadata_file.split('/')[-1]
+        shutil.move(os.path.join(tmp_dir, metadata_file), os.path.join(path, metadata_file_name))
+        shutil.rmtree(tmp_dir)
+       
+    
+def find_missing_report_ids(reportsfile, outdir):
+    with codecs.open(reportsfile,'r','utf8') as f:
+        content = [line.strip() for line in f.readlines() if len(line) > 1]
+    for rid in content:
+        path = construct_write_folder(outdir, rid)
+        if not os.path.exists(os.path.join(path,rid)):
+            print rid
+    
 
 def main():
-    #print get_max_congress_report_number(112, "srpt")
+    
     congresses = range(104,114)
-    #print_congress_report_ids(congresses)
+
     parser = argparse.ArgumentParser()
-    group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument('--prepare', action='store_true', help='create folder strucutre, and print out all report ids, \
+    subparsers = parser.add_subparsers(dest='subparser_name' ,help='sub-command help')
+    
+    parser_prepare = subparsers.add_parser('prepare', help='create folder strucutre')
+    parser_prepare.add_argument('--outdir', required=True, help='root path under which files will be written')
+    
+    parser_print = subparsers.add_parser('print-ids', help='print out all report ids, \
      prepare need to be called before any fetch')
-    group.add_argument('--fetch', type=str,  help='fetches report id and write it to path')
-    parser.add_argument('--outdir', required=True, help='root path under which files will be written')
+    
+    parser_fetch = subparsers.add_parser('fetch', help='fetches report id and write it to path') 
+    parser_fetch.add_argument('--outdir', required=True, help='root path under which files will be written')
+    parser_fetch.add_argument('--reportid', required=True, help='the report id to be fetched')
+    
+    parser_diff = subparsers.add_parser('diff', help='finds the missing report ids that failed to download')
+    parser_diff.add_argument('--outdir', required=True, help='the directory which hodls the downloaded reports')
+    parser_diff.add_argument('--reportsfile', required=True, help='the file containing the report ids \
+    which need to be checked')
+    
+    parser_fetch_zip = subparsers.add_parser('fetch-zip', help='fetches report id using the zip file and write ONLY the file and the metadata to path') 
+    parser_fetch_zip.add_argument('--outdir', required=True, help='root path under which files will be written')
+    parser_fetch_zip.add_argument('--reportid', required=True, help='the report id to be fetched')
+    
     args = parser.parse_args()
-    base_dir = args.outdir
-    if args.fetch:
-        download_and_write_report(args.fetch, base_dir)
-    else:
-        setup_directories(base_dir, congresses)
+    if args.subparser_name =="fetch":
+        download_and_write_report(args.reportid, args.outdir)
+    elif args.subparser_name == "print-ids":
         print_congress_report_ids(congresses)
+    elif args.subparser_name == "prepare":
+        setup_directories(args.outdir, congresses)
+    elif args.subparser_name == "diff":
+        find_missing_report_ids(args.reportsfile,args.outdir)
+    elif args.subparser_name =="fetch-zip":
+        download_and_write_report_as_zip(args.reportid, args.outdir)
 
 if __name__ =="__main__":
     main()
