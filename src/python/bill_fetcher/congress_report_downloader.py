@@ -163,7 +163,7 @@ def download_and_write_report_as_zip(report_id, base_dir):
         htm_file_name = htm_file.split('/')[-1]
         zfile.extract(htm_file, tmp_dir)
         shutil.move(os.path.join(tmp_dir, htm_file), os.path.join(path, htm_file_name[5:-4]))# CRPT-107hrpt640-pt1.htm becomes 107hrpt640-pt1        
-    shutil.rmtree(tmp_dir)
+    #shutil.rmtree(tmp_dir)
        
     
 def find_missing_report_ids(reportsfile, outdir):
