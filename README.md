@@ -10,6 +10,7 @@ We will use two APIs provided by the Sunlight Foundation for this project to get
 - Matthew Heston
 - Madian Khabsa
 - Vrushank Vora
+- Ellery Wulczyn
 
 # License
 
