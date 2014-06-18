@@ -4,6 +4,7 @@ import re
 from bs4 import BeautifulSoup
 
 root_dir = "/mnt/data/sunlight/congress_reports/"
+reports_bills_file = open("reports_bills.csv", "w")
 
 # loop through each folder
 def get_reports(path, congress):
@@ -14,9 +15,9 @@ def get_reports(path, congress):
             xml_file = os.path.join(path, report, "mods.xml")
             associated_bill = get_associated_bill(xml_file)
             report_dir = os.listdir(os.path.join(path, report))
-            if "mods.xml" in bill_dir:
+            if "mods.xml" in report_dir:
                 report_dir.remove("mods.xml")
-            write_bill_association(os.path.join(path, report, report_dir), get_bill_directory(associated_bill, congress))
+            write_bill_association(os.path.join(path, report, report_dir[0]), get_bill_directory(associated_bill, congress))
 
 def get_associated_bill(xml_file):
     bill_name = ""
@@ -29,7 +30,7 @@ def get_associated_bill(xml_file):
     return bill_name
 
 def write_bill_association (report_id, bill_id):
-    print "%s,%s" % (report_id, bill_id)
+    reports_bills_file.write("%s,%s\n" % (report_id, bill_id))
 
 def get_bill_directory(bill_name, congress_number):
     if not bill_name:
@@ -41,6 +42,8 @@ def get_bill_directory(bill_name, congress_number):
     bill_dir = os.path.join(bill_dir, "bills")
     bill_dir = os.path.join(bill_dir, get_bill_type_dir(bill_name))
     bill_dir = os.path.join(bill_dir, get_full_bill_dir(bill_name))
+
+    return bill_dir
 
 def get_bill_type_dir(bill_name):
     if "H. Con. Res." in bill_name:
@@ -61,11 +64,11 @@ def get_bill_type_dir(bill_name):
     return "s"
 
 def get_full_bill_dir(bill_name):
-    bill_type = get_bill_type(bill_name)
+    bill_type = get_bill_type_dir(bill_name)
 
     bill_num_regex = re.compile(r"\d+")
     number_match = bill_num_regex.search(bill_name)
-    bill_number = number.match.group()
+    bill_number = number_match.group()
 
     return bill_type + bill_number
 
