@@ -22,3 +22,13 @@ def is_table(paragraph):
         return True
     else:
         return False
+
+def get_table_rows(table):
+    rows = []
+    table = table.replace("..", " ")
+    for line in table.split("\n"):
+        rows.append([col for col in re.split("[ ]{3,}", line) if col != "." and col != ""])
+
+    return rows
+
+
