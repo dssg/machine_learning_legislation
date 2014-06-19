@@ -50,7 +50,11 @@ class BillPathUtils:
         path_to_bill: absolute path to a bill. Assumes no versions in the path
         example: /mnt/data/sunlight/bills/111/bills/s/s100/
         """
-        return os.listdir(os.path.join(path_to_bill, 'text-versions') )
+        path = os.path.join(path_to_bill, 'text-versions')
+        if os.path.exists(path):
+            return os.listdir(path )
+        else:
+            return []
         
 class ReportPathUtils():
     
