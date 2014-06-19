@@ -74,7 +74,7 @@ class ReportPathUtils():
     def report_number(self):
         return pathParts[2]
         
-    def version_number(self):
+    def version(self):
         return pathParts[-1]
         
     def get_report_path(self, congress, chamber, number, version):
