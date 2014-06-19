@@ -1,7 +1,7 @@
 create table documents (
 id serial primary key,
 date date,
-version varchar(10),
+version varchar(100),
 congress_meta_document integer
 );
 
