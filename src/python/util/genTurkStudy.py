@@ -43,7 +43,7 @@ for i in range(100):
 	
 	doc = f.read()
 
-	cmd = "select * from old_billentities where bill_id = " + "'"+ids[i][0]+"' and entity_type = 'Currency'"
+	cmd = "select * from old_billentities where bill_id = " + "'"+ids[i][0]+"' and entity_type = 'Currency' and entity_name = 'USD'"
 	cur.execute(cmd)
 	currency_entities = cur.fetchall()
 	print "Number of Currency entities in Bill"+ids[i][0], len(currency_entities)
