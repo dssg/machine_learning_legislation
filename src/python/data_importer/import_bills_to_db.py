@@ -92,6 +92,19 @@ def import_reports_folder(path):
     for dir in os.listdir(path):
         import_report(os.path.join(path, dir))
         
+def import_report(path):
+    """
+    path: path to folder containing report
+    """
+    report_path_obj = path_tools.ReportPathUtils(path)
+    db_report_id = import_bill_info(False, 
+    "%s-%d" %(report_path_obj.report_number(), report_path_obj.congress()) , report_path_obj.congress(), 
+    report_path_obj.report_number(), report_path_obj.chamber() =='senate' )
+    versions = report_path_obj.get_all_versions(path)
+    for v_name in versions:
+        v = path_tools.ReportPathUtils( os.path.join(path, v_name))
+        import_version(v.version(), db_report_id, None )
+        
 def main():
     parser = argparse.ArgumentParser(description='Import bills and reports to the database')
     group = parser.add_mutually_exclusive_group(required=True)
@@ -103,7 +116,7 @@ def main():
     if args.bills:
         import_congress_bills(path)
     else:
-        pass
+        import_congress_reports(path)
 if __name__=="__main__":
     main()
     
