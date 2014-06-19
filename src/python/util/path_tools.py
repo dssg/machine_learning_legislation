@@ -75,5 +75,13 @@ class ReportPathUtils():
     def get_report_path(self, congress, chamber, number, version):
         return "%s%d/%s/%d/%s"%(self.rootDir, congress, chamber, number, version)
         
+    def get_all_versions(self, path_to_report):
+        """
+        get all the versions of the report
+        note that report has only one version, however some reports are split into 
+        parts and we modle a part as a version
+        path_to_report: absolute path to the report directory
+        """
+        return [ fname for fnmae in os.listdir(path_to_report) if fname != 'mods.xml']
             
     
