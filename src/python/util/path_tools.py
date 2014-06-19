@@ -69,13 +69,13 @@ class ReportPathUtils():
         return int(self.path[len(self.rootDir):len(self.rootDir)+3])
         
     def chamber(self):
-        return pathParts[1]
+        return self.pathParts[1]
         
     def report_number(self):
-        return pathParts[2]
+        return self.pathParts[2]
         
     def version(self):
-        return pathParts[-1]
+        return self.pathParts[-1]
         
     def get_report_path(self, congress, chamber, number, version):
         return "%s%d/%s/%d/%s"%(self.rootDir, congress, chamber, number, version)
@@ -87,6 +87,6 @@ class ReportPathUtils():
         parts and we modle a part as a version
         path_to_report: absolute path to the report directory
         """
-        return [ fname for fnmae in os.listdir(path_to_report) if fname != 'mods.xml']
+        return [ fname for fname in os.listdir(path_to_report) if fname != 'mods.xml']
             
     

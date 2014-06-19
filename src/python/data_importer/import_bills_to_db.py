@@ -102,7 +102,7 @@ def import_report(path):
     report_path_obj.report_number(), report_path_obj.chamber() =='senate' )
     versions = report_path_obj.get_all_versions(path)
     for v_name in versions:
-        v = path_tools.ReportPathUtils( os.path.join(path, version_name))
+        v = path_tools.ReportPathUtils( os.path.join(path, v_name))
         import_version(v.version(), db_report_id, None )
         
 def main():
