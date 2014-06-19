@@ -19,10 +19,11 @@ def import_bill(path):
     db_bill_id = import_bill_info(True, 
     "%s-%d" %(bill_path_obj.bill_number(), bill_path_obj.congress()) , bill_path_obj.congress(), 
     bill_path_obj.bill_number(), bill_path_obj.chamber() =='senate' )
-    versions = bill.get_all_versions(path)
+    #print db_bill_id
+    versions = bill_path_obj.get_all_versions(path)
     for version_name in versions:
-        v = path_tools.BillPathUtils( os.path.join((os.path.join(path,'text-versions'), version_name)))
-        parts = v.bill_date().split('-')
+        v = path_tools.BillPathUtils( os.path.join(os.path.join(path,'text-versions'), version_name))
+        parts = [int(p) for p in v.bill_date().split('-')]
         import_version(v.version(), db_bill_id, datetime.date(parts[0],parts[1],parts[2]) )
         
 def import_bill_info(bill, sunlight_id, congress, number, senate):
@@ -37,13 +38,14 @@ def import_bill_info(bill, sunlight_id, congress, number, senate):
     conn = psycopg2.connect(CONN_STRING)
     try:
         cmd = "insert into congress_meta_document (bill, sunlight_id, congress, number, senate) \
-        values (%s, %s, %s, %s, %s)"
+        values (%s, %s, %s, %s, %s) returning id"
         cur = conn.cursor()
         cur.execute(cmd, (bill, sunlight_id, congress, number, senate))
         conn.commit()
-        return cur.lastrowid
+        return cur.fetchone()[0]
         
     except Exception as exp:
+        conn.rollback()
         print exp
         raise exp
     finally:
@@ -51,11 +53,18 @@ def import_bill_info(bill, sunlight_id, congress, number, senate):
     
 def import_version(version_name, congress_meta_doc_id, version_date=None):
     conn = psycopg2.connect(CONN_STRING)
-    with closing(conn):
+    try:
         cur = conn.cursor()
         cmd = 'insert into documents (date, version, congress_meta_document) values(%s,%s,%s)'
         cur.execute(cmd, (version_date, version_name, congress_meta_doc_id))
         conn.commit()
+    except Exception as ex:
+        conn.rollback()
+        print ex
+        raise ex
+    finally:
+        conn.close()
+        
 
 def import_bills_folder(path):
     for dir in os.listdir(path):
