@@ -15,13 +15,13 @@ def import_bill(path):
     path: absolute path to the bill directory
     example: /mnt/data/sunlight/bills/111/bills/s/s100/
     """
-    bill_path_obj = path_utils.BillPathUtils(path)
+    bill_path_obj = path_tools.BillPathUtils(path)
     db_bill_id = import_bill_info(True, 
     "%s-%d" %(bill_path_obj.bill_number(), bill_path_obj.congress()) , bill_path_obj.congress(), 
     bill_path_obj.bill_number(), bill_path_obj.chamber() =='senate' )
     versions = bill.get_all_versions(path)
     for version_name in versions:
-        v = path_utils.BillPathUtils( os.path.join((os.path.join(path,'text-versions'), version_name)))
+        v = path_tools.BillPathUtils( os.path.join((os.path.join(path,'text-versions'), version_name)))
         parts = v.bill_date().split('-')
         import_version(v.version(), db_bill_id, datetime.date(parts[0],parts[1],parts[2]) )
         
