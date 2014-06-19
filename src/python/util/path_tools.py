@@ -33,7 +33,7 @@ class BillPathUtils:
         date = json.load(open(os.path.join(self.path, 'data.json')))
         return date['issued_on']
         
-    def get_bill_path(self, congress, chamber, number, version):
+    def get_bill_path(self, congress, number, version):
         chars = "".join([ch for ch in number if ch.isalpha()])
         return "%s%d/bills/%s/%s/text-versions/%s/" %(self.rootDir, congress, chars,number,version )
         
