@@ -34,8 +34,22 @@ class BillPathUtils:
         return date['issued_on']
         
     def get_bill_path(self, congress, number, version):
+        """
+        returns the path to a bill using the information provided
+        congress: integer for congress number, example: 111
+        number: bill number, example hr2244 or s154. Note it's a string
+        version: string version, example ih, rs
+        """
         chars = "".join([ch for ch in number if ch.isalpha()])
         return "%s%d/bills/%s/%s/text-versions/%s/" %(self.rootDir, congress, chars,number,version )
+        
+    def get_all_versions(self, path_to_bill):
+        """
+        returns the name of the available versions for a current bill
+        path_to_bill: absolute path to a bill. Assumes no versions in the path
+        example: /mnt/data/sunlight/bills/111/bills/s/s100/
+        """
+        return os.listdir(os.path.join(path_to_bill, 'text-versions') )
         
 class ReportPathUtils():
     
