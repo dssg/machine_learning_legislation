@@ -8,9 +8,10 @@ class BillPathUtils:
         self.rootDir = rootDir
         if not self.rootDir.endswith('/'):
             self.rootDir += '/'
+            
         
     def congress(self):
-        return self.path[len(self.rootDir):len(self.rootDir)+3]
+        return int(self.path[len(self.rootDir):len(self.rootDir)+3])
         
     def chamber(self):
         subpath = self.path[len(self.rootDir):]
@@ -61,7 +62,7 @@ class ReportPathUtils():
         self.pathParts = self.path[len(self.rootDir):].split('/')
     
     def congress(self):
-        return self.path[len(self.rootDir):len(self.rootDir)+3]
+        return int(self.path[len(self.rootDir):len(self.rootDir)+3])
         
     def chamber(self):
         return pathParts[1]
