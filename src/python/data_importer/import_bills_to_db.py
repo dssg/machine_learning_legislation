@@ -77,7 +77,21 @@ def import_congress_bills(path):
     """
     for dir in os.listdir(path):
         import_bills_folder(os.path.join(path,dir))
-    
+
+def import_congress_reports(path):
+    """
+    path: path to congress reports
+    """
+    for dir in os.listdir(path):
+        import_reports_folder(os.path.join(path, dir))
+
+def import_reports_folder(path):
+    """
+    path: path to senate or house folder that contains multiple reports
+    """
+    for dir in os.listdir(path):
+        import_report(os.path.join(path, dir))
+        
 def main():
     parser = argparse.ArgumentParser(description='Import bills and reports to the database')
     group = parser.add_mutually_exclusive_group(required=True)
