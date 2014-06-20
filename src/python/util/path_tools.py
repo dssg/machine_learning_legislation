@@ -63,12 +63,12 @@ class BillPathUtils:
         import psycopg2
         conn = psycopg2.connect(self.CONN_STRING)
         try:
-            cmd = "select documents.id form documents, congress_meta_documents \
+            cmd = "select documents.id from documents, congress_meta_document \
             where congress_meta_document.id = documents.congress_meta_document \
             and congress = %s and version = %s and senate = %s and bill= true \
             and number = %s"
             cur = conn.cursor()
-            cur.execute(cmd, %(self.congress(), self.version(), self.chamber()=='senate', self.bill_number()))
+            cur.execute(cmd, (self.congress(), self.version(), self.chamber()=='senate', self.bill_number() )  )
             return cur.fetchone()[0]
         except Exception as ex:
             print ex
@@ -87,7 +87,7 @@ class BillPathUtils:
             where documents.congress_meta_document = congress_meta_document.id \
             and documents.id = %s"
             cur = conn.cursor()
-            cur.execute(cmd, %(doc_id,) )
+            cur.execute(cmd, (doc_id,) )
             record = cur.fetchone()
             return self.get_bill_path( record[0], record[1], record[2])
             
@@ -102,6 +102,7 @@ class ReportPathUtils():
     def __init__(self, path="", rootDir="/mnt/data/sunlight/congress_reports/"):
         self.path = path
         self.rootDir = rootDir
+        self.CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
         if not self.rootDir.endswith('/'):
             self.rootDir += '/'
         self.pathParts = self.path[len(self.rootDir):].split('/')
@@ -131,19 +132,19 @@ class ReportPathUtils():
         return [ fname for fname in os.listdir(path_to_report) if fname != 'mods.xml']
         
     
-     def get_db_document_id(self):
+    def get_db_document_id(self):
          """
          returns the database document id for the current object that represents a path
          """
          import psycopg2
          conn = psycopg2.connect(self.CONN_STRING)
          try:
-             cmd = "select documents.id form documents, congress_meta_documents \
+             cmd = "select documents.id from documents, congress_meta_document \
              where congress_meta_document.id = documents.congress_meta_document \
              and congress = %s and version = %s and senate = %s and bill= false \
              and number = %s"
              cur = conn.cursor()
-             cur.execute(cmd, %(self.congress(), self.version(), self.chamber()=='senate', self.report_number()))
+             cur.execute(cmd, (self.congress(), self.version(), self.chamber()=='senate', self.report_number()))
              return cur.fetchone()[0]
          except Exception as ex:
              print ex
@@ -162,7 +163,7 @@ class ReportPathUtils():
             where documents.congress_meta_document = congress_meta_document.id \
             and documents.id = %s"
             cur = conn.cursor()
-            cur.execute(cmd, %(doc_id,) )
+            cur.execute(cmd, (doc_id,) )
             record = cur.fetchone()
             chamber= 'senate'
             if not record[3]:

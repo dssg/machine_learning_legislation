@@ -40,7 +40,7 @@ def extract_entities(text, offset=0):
             e_name = calais_entity['name']
             e_url = None
             if calais_entity.has_key('resolutions'):
-                e_url=calais_entity['resolutions']['id']
+                e_url=calais_entity['resolutions'][0]['id']
             for instance in calais_entity['instances']:
                 e = Entity()
                 e.name = e_name
@@ -55,6 +55,7 @@ def extract_entities(text, offset=0):
     except Exception as exp:
         print exp
         return []
+        #raise exp
     
     
 def handle_file(document_path, content, doc_type):
@@ -106,7 +107,7 @@ def insert_entities_to_db(entities, document_path, doc_type):
     conn = psycopg2.connect(CONN_STRING)
     cmd = "insert into entities (entity_text, entity_type, entity_offset, \
     entity_length, entity_inferred_name, source,  document_id, entity_url) values (%s, %s, %s, %s, %s,'calais',%s, %s)"
-    if doc_type =='senate':
+    if doc_type =='bill':
         obj = path_tools.BillPathUtils(document_path)
     else:
         obj = path_tools.ReportPathUtils(document_path)
