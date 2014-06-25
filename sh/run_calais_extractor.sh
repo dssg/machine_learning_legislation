@@ -5,4 +5,4 @@ CMD="python $HOME/src/python/ner/bills_ner.py"
 FILE_NAMES=$1
 THREADS=$2
 
-cat $FILE_NAMES | parallel --tmpdir /tmp/calais/ --files -P $THREADS $CMD "{}"
+cat $FILE_NAMES | parallel --tmpdir /tmp/calais/ --files -P $THREADS $CMD "{}" report
