@@ -20,7 +20,7 @@ create table entities
 id serial primary key,
 entity_text varchar(256),
 entity_type varchar(100),
-entitiy_offset integer,
+entity_offset integer,
 entity_length integer,
 entity_inferred_name varchar(512),
 source varchar(64),
