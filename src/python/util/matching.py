@@ -64,17 +64,18 @@ for earmark in earmarks:
 		if  normalized_inferred_name in normalized_description:
 			d_desc.add(normalized_inferred_name)
 
-		if normalized_entity in normalized_excerpt:
-			d_exerpt.add(normalized_entity)
-		if normalized_inferred_name in normalized_excerpt:
-			d_exerpt.add(normalized_inferred_name)
+		if "table" not in normalized_excerpt:
+			if normalized_entity in normalized_excerpt:
+				d_exerpt.add(normalized_entity)
+			if normalized_inferred_name in normalized_excerpt:
+				d_exerpt.add(normalized_inferred_name)
 
 	print "entities in description: ",  d_desc
 	print "\n"
 	print "entities in excerpt:", d_exerpt
 	print "\n\n"
-	#print "all", set([entity['entity_inferred_name'] for entity in entities])
-
+	sorted_desc_entities = sorted(list(d_desc.union(d_exerpt)), key=len)
+	print sorted_desc_entities
 
 	print "\n"*4
 	if i==100:
