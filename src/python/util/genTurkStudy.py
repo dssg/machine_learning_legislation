@@ -46,7 +46,7 @@ for i in range(100):
 	cmd = "select * from old_billentities where bill_id = " + "'"+ids[i][0]+"' and entity_type = 'Currency' and entity_name = 'USD'"
 	cur.execute(cmd)
 	currency_entities = cur.fetchall()
-	print "Number of Currency entities in Bill"+ids[i][0], len(currency_entities)
+	print "Number of Currency entities in Bill: "+ids[i][0], len(currency_entities)
 	for ce in currency_entities:
 		offset = ce[3]
 		upper = offset + post_window;
@@ -57,11 +57,13 @@ for i in range(100):
 		c_start = ce[3]
 		c_end = ce[3] + ce[4]
 		highlighted_c = "<SPAN style='BACKGROUND-COLOR: #ffff00'>" + doc[ce[3]:(ce[3]+ce[4])] + "</SPAN>"
-		print "Number of Other entities near currency entity", len(org_entities)
+		print "Number of Other entities near currency entity: ", doc[ce[3]:(ce[3]+ce[4])], len(org_entities)
 		for oe in org_entities:
 			o_start = oe[3]
 			o_end = oe[3] + oe[4]
 			highlighted_o = "<SPAN style='BACKGROUND-COLOR: #FFCCFF'>" + doc[oe[3]:(oe[3]+oe[4])] + "</SPAN>"
+
+		
 
 			aug_text = doc[lower:min(c_start, o_start)]
 			if (c_end < o_end):
@@ -70,10 +72,13 @@ for i in range(100):
 				aug_text = aug_text + highlighted_o + doc[o_end:c_start] + highlighted_c + doc[c_end:upper]
 
 
-			print oe[3], oe[4], doc[oe[3]:(oe[3]+oe[4])]
+			
 
 			row = [oe[0], ce[0], aug_text]
-			writer.writerow(row)
+
+			if doc[oe[3]:(oe[3]+oe[4])] != 'SEC':
+				print oe[3], oe[4], doc[oe[3]:(oe[3]+oe[4])]
+				writer.writerow(row)
 
 
 
