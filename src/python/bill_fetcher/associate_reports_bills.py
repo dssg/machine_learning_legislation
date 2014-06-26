@@ -2,6 +2,8 @@ import os
 import psycopg2
 import re
 from bs4 import BeautifulSoup
+from datetime import datetime
+import json
 
 root_dir = "/mnt/data/sunlight/congress_reports/"
 reports_bills_file = open("reports_bills.csv", "w")
@@ -42,8 +44,22 @@ def get_bill_directory(bill_name, congress_number):
     bill_dir = os.path.join(bill_dir, "bills")
     bill_dir = os.path.join(bill_dir, get_bill_type_dir(bill_name))
     bill_dir = os.path.join(bill_dir, get_full_bill_dir(bill_name))
+    bill_dir = os.path.join(bill_dir, "text-versions")
+    bill_dir = os.path.join(bill_dir, get_latest_version(bill_dir))
 
     return bill_dir
+
+def get_latest_version(bill_path):
+    versions = os.listdir(bill_path)
+    latest_version = ""
+    latest_version_date = datetime(1,1,1)
+    for version in versions:
+        metadata = json.load(open(os.path.join(bill_path, version, "data.json")))
+        if datetime.strptime(metadata["issued_on"], "%Y-%m-%d") > latest_version_date:
+            latest_version_date = datetime.strptime(metadata["issued_on"], "%Y-%m-%d")
+            latest_version = version
+
+    return latest_version
 
 def get_bill_type_dir(bill_name):
     if "H. Con. Res." in bill_name:
@@ -74,7 +90,8 @@ def get_full_bill_dir(bill_name):
 
 def main():
     # for each congress
-    for congress in os.listdir(root_dir):
+    congresses = ["108", "109", "110", "111"]
+    for congress in congresses:
         path = os.path.join(root_dir, congress, "house")
         get_reports(path, congress)
         path = os.path.join(root_dir, congress, "senate")
