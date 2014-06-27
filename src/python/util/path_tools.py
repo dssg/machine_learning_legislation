@@ -147,7 +147,7 @@ class ReportPathUtils():
              cur.execute(cmd, (self.congress(), self.version(), self.chamber()=='senate', self.report_number()))
              return cur.fetchone()[0]
          except Exception as ex:
-             print ex
+             #print ex
              raise ex
          finally:
              conn.close()
@@ -171,7 +171,7 @@ class ReportPathUtils():
             return self.get_report_path( record[0], chamber, record[1], record[2] )
             
         except Exception as ex:
-            print ex
+            #print ex
             raise ex
         finally:
             conn.close()
