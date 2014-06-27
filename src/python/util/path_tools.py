@@ -199,8 +199,8 @@ def doc_id_to_path(doc_id):
             return r.get_report_path( record[0], chamber, record[1], record[2] )
         
     except Exception as ex:
-        traceback.print_stack()
+        #traceback.print_stack()
         #print ex
-        #raise ex
+        raise ex
     finally:
         conn.close()
