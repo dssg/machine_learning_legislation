@@ -159,7 +159,7 @@ class ReportPathUtils():
         import psycopg2
         conn = psycopg2.connect(self.CONN_STRING)
         try:
-            cmd = "select congress, number, version, chamber from documents, congress_meta_document \
+            cmd = "select congress, number, version, senate from documents, congress_meta_document \
             where documents.congress_meta_document = congress_meta_document.id \
             and documents.id = %s"
             cur = conn.cursor()
