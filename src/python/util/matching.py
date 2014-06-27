@@ -142,7 +142,8 @@ def main():
         for doc in doc_ids:
             normalized_excerpt = normalize(doc['excerpt'])
             excerpt_shingles = shinglize(normalized_excerpt, 2)
-            print doc['document_id'] 
+            print doc['document_id']
+            print path_tools.doc_id_to_path(doc['document_id'])
             doc_entities = get_entities(doc['document_id'])
             for doc_e in doc_entities:
                 normalized_entity_text = normalize(doc_e['entity_text'])

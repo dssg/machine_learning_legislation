@@ -7,6 +7,7 @@ import argparse
 import path_tools
 from collections import Counter
 import csv
+from itertools import chain
 
 
 
@@ -20,7 +21,7 @@ class Table:
         self.header = []
         self.rows = []
         self.row_offsets = []
-        self.candidate_entities = set()
+        self.candidate_entities = []
         
     def __str__(self):
         pass #print self.title, self.content
@@ -94,7 +95,7 @@ def identify_tables(list_paragraphs):
     for table in tables:
         find_table_header(table)
         find_table_rows(table)
-        get_candidate_entities(table)
+        #get_candidate_entities(table)
         
     return tables
 
@@ -155,7 +156,13 @@ def parse_header(header_content):
     for cluster in clusters:
         headers.append(' '.join(map(lambda a: a[0], sorted(cluster, key=operator.itemgetter(1)))))
     return headers
-            
+     
+
+def get_candidate_entities(table):
+    counts = Counter(list(chain.from_iterable(table.rows)))
+    entities = [key for key in counts.keys() if (counts[key]<3 and not re.match(r'\$*[\d,]{3,}', key))]
+    #pprint(entities)
+    return entities       
         
 
 def find_table_rows(table):
@@ -257,18 +264,8 @@ def is_table(paragraph):
     else:
         return False
 
-def get_table_rows(table):
-    rows = []
-    table = table.replace("..", " ")
-    for line in table.split("\n"):
-        rows.append([col for col in re.split("[ ]{3,}", line) if col != "." and col != ""])
 
-    return rows
 
-def get_candidate_entities(table):
-    counts = Counter([item for sublist in table.rows for item in sublist])
-    entities = {key for key in counts.keys() if counts[key]<3}
-    table.candidate_entities = entities
 
 
 if __name__=="__main__":
