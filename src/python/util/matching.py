@@ -122,8 +122,9 @@ def find_best_match_with_score(matches):
     matches: list of tuples, such that tupleis (entity, score)
     """
     sorted_desc_entities = sorted(matches, key=operator.itemgetter(1), reverse=True)
-    return sorted_desc_entities[:5]
-
+    #return sorted_desc_entities[:5]
+    if len(sorted_desc_entities) > 0 and sorted_desc_entities[0][1] > 0.5:
+        return sorted_desc_entities[0]
 
 def main():
     earmarks = get_earmarks()
