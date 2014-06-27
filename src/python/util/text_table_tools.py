@@ -4,16 +4,22 @@ import codecs
 import operator
 from pprint import pprint
 import argparse
+import path_tools
+
+import csv
+
+
 
 class Table:
     def __init__(self):
-        self.content = []
+        self.content = [] 
         self.title = []
         self.offset = 0
         self.length = 0
         self.body = []
         self.header = []
         self.rows = []
+        self.row_offsets = []
         
     def __str__(self):
         pass #print self.title, self.content
@@ -107,6 +113,8 @@ def find_table_header(table):
             table.body = table.content
     else:
         table.body = table.content
+
+
         
 def parse_header(header_content):
     """
@@ -278,12 +286,15 @@ if __name__=="__main__":
             print "Rows:"
             for row in t.rows: print row
             print'\n'*8
-    else:
+    if args.paragraphs:
         for p in paragrapghs_list:
             pprint(p.content)
             print "Paragrapgh offset %d, length %d" %(p.offset, p.length)
             print "is table? " , is_table(p.content)
             print'\n'*8
+    
+            
+
             
             
     
