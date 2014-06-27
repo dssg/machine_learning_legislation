@@ -85,7 +85,7 @@ def get_entities(doc_id):
     """
     conn = psycopg2.connect(CONN_STRING)
     columns = ["entity_text", "entity_type", "entity_offset", "entity_length", "entity_inferred_name"]
-    cmd = "select "+", ".join(columns)+" from entities where document_id = %s and entity_type in ('Organization', 'Facility', 'Company')"
+    cmd = "select "+", ".join(columns)+" from entities where document_id = %s and entity_type in ('Organization', 'Facility', 'Company', 'table_entity')"
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
     cur.execute(cmd, (doc_id,))
     records = cur.fetchall()
@@ -129,10 +129,11 @@ def main():
         desc_short_matches=set()
         excerpt_matches =set()
         desc_full_matches =set()
+        matches = []
         doc_ids = get_earmark_doc_ids(e['earmark_id'])
         for doc in doc_ids:
-            normalized_excerpt = normalize(doc['excerpt'])
-            excerpt_shingles = shinglize(normalized_excerpt, 2)
+            #normalized_excerpt = normalize(doc['excerpt'])
+            #excerpt_shingles = shinglize(normalized_excerpt, 2)
             doc_entities = get_entities(doc['document_id'])
             for doc_e in doc_entities:
                 normalized_entity_text = normalize(doc_e['entity_text'])
@@ -145,13 +146,12 @@ def main():
                 e_name_shingles = shinglize(normalized_entity_inferred_name, 2)
                 
                 lst_entities = [e_text_shingles, e_name_shingles]
-                lst_txt = [fd_shingles, sd_shingles, excerpt_shingles ]
+                lst_txt = [fd_shingles, sd_shingles ] #excerpt_shingles
                 
-                matches = []
+                
                 
                 for pair in itertools.product(lst_entities, lst_txt):
                     score = match_jaccard(*pair)
-                    #print pair, score
                     if score > 0:
                         matches.append( (pair[0], score) )
                     
@@ -186,57 +186,7 @@ def main():
         
         print "Matched: %d, Failed %d" %(num_matched, num_failed)
 
-"""
-i=0
-num_matches=0
-for earmark in earmarks:
-    i=i+1   #get all named entities from the document
-    columns = ["entity_text", "entity_type", "entity_offset", "entity_length", "entity_inferred_name"]
-    cmd = "select "+", ".join(columns)+" from entities where document_id = "+str(earmark['document_id']) + " and entity_type in ('Organization', 'Facility', 'Company')"
-    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-    cur.execute(cmd)
-    entities = cur.fetchall()
-    print "number of entities", len(entities)
-    # find all entities that occur in excerpt, short description or full description or excerpt
-    short_description =  earmark["short_description"]
-    
-    normalized_description = normalize(short_description)
-    normalized_excerpt = normalize(earmark['excerpt'])
-    print "short_description: \n", normalized_description
-    print "excerpt:\n ", normalized_excerpt
 
-    d_desc=set()
-    d_exerpt=set()
-    for entity in entities:
-        normalized_entity = normalize(entity['entity_text'])
-        normalized_inferred_name = normalize(entity['entity_inferred_name'])
-
-        if normalized_entity in normalized_description:
-            d_desc.add(normalized_entity)
-        if  normalized_inferred_name in normalized_description:
-            d_desc.add(normalized_inferred_name)
-
-        if "table" not in normalized_excerpt:
-            if normalized_entity in normalized_excerpt:
-                d_exerpt.add(normalized_entity)
-            if normalized_inferred_name in normalized_excerpt:
-                d_exerpt.add(normalized_inferred_name)
-
-    print "entities in description: ",  d_desc
-    print "\n"
-    print "entities in excerpt:", d_exerpt
-    print "\n\n"
-    diff = [x for x in list(d_desc.union(d_exerpt) - earmar_blacklist) if len(x.split()) > 1 ]
-    sorted_desc_entities = sorted(diff, key=len, reverse=True)
-    print sorted_desc_entities
-
-    print "\n"*4
-    if len(sorted_desc_entities) > 0:
-        num_matches +=1
-    if i==1000:
-        print "Total matches named entities %d"%(num_matches)
-        break
-"""
 if __name__=="__main__":
     main()
 
