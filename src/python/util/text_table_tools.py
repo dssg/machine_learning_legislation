@@ -5,7 +5,7 @@ import operator
 from pprint import pprint
 import argparse
 import path_tools
-
+from collections import Counter
 import csv
 
 
@@ -20,6 +20,7 @@ class Table:
         self.header = []
         self.rows = []
         self.row_offsets = []
+        self.candidate_entities = set()
         
     def __str__(self):
         pass #print self.title, self.content
@@ -93,6 +94,7 @@ def identify_tables(list_paragraphs):
     for table in tables:
         find_table_header(table)
         find_table_rows(table)
+        get_candidate_entities(table)
         
     return tables
 
@@ -245,7 +247,7 @@ def is_table(paragraph):
     dots_re = re.compile(r"\.\.\.")
     digit_re = re.compile(r"\d+")
     dash_re = re.compile(r"---")
-    spaces_re = re.compile(r'^\S+[ ]{2,}')
+    spaces_re = re.compile(r'[\S]+[ ]{2,}')
     lines = paragraph
     matching_lines = [line for line in lines if (dots_re.search(line) and digit_re.search(line)) 
     or (spaces_re.search(line) and digit_re.search(line)) or dash_re.search(line)]
@@ -262,6 +264,12 @@ def get_table_rows(table):
         rows.append([col for col in re.split("[ ]{3,}", line) if col != "." and col != ""])
 
     return rows
+
+def get_candidate_entities(table):
+    counts = Counter([item for sublist in table.rows for item in sublist])
+    entities = {key for key in counts.keys() if counts[key]<3}
+    table.candidate_entities = entities
+
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description='identify tables and paragrapghs in bills')
@@ -286,6 +294,7 @@ if __name__=="__main__":
             print "Rows:"
             for row in t.rows: print row
             print'\n'*8
+            pprint (t.candidate_entities)
     if args.paragraphs:
         for p in paragrapghs_list:
             pprint(p.content)

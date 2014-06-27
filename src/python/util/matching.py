@@ -8,6 +8,8 @@ import operator
 import string
 import itertools
 import operator
+import path_tools
+import re
 
 from nltk import metrics, stem, tokenize
 from nltk.tokenize.punkt import PunktWordTokenizer
@@ -33,8 +35,10 @@ def fuzzy_match(s1, s2):
 
 def normalize(s):
     for p in string.punctuation:
-        s = s.replace(p, '')
- 
+        s = s.replace(p, ' ')
+
+    s = re.sub(r'[ ]{2,}', " ", s)
+
     return s.lower().strip()
     
 def tokenize(s):
@@ -62,7 +66,9 @@ def get_earmarks():
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
     cur.execute(cmd)
     earmarks = cur.fetchall()
+    conn.close()
     return earmarks
+
     #print "number of earmarks", len(earmarks)
 
 
@@ -76,6 +82,7 @@ def get_earmark_doc_ids(earmark_id):
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
     cur.execute(cmd, (earmark_id,))
     docs = cur.fetchall()
+    conn.close()
     return docs
 
 
@@ -89,6 +96,7 @@ def get_entities(doc_id):
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
     cur.execute(cmd, (doc_id,))
     records = cur.fetchall()
+    conn.close()
     return records
 
 
@@ -132,8 +140,9 @@ def main():
         matches = []
         doc_ids = get_earmark_doc_ids(e['earmark_id'])
         for doc in doc_ids:
-            #normalized_excerpt = normalize(doc['excerpt'])
-            #excerpt_shingles = shinglize(normalized_excerpt, 2)
+            normalized_excerpt = normalize(doc['excerpt'])
+            excerpt_shingles = shinglize(normalized_excerpt, 2)
+            print doc['document_id'] 
             doc_entities = get_entities(doc['document_id'])
             for doc_e in doc_entities:
                 normalized_entity_text = normalize(doc_e['entity_text'])
@@ -146,7 +155,7 @@ def main():
                 e_name_shingles = shinglize(normalized_entity_inferred_name, 2)
                 
                 lst_entities = [e_text_shingles, e_name_shingles]
-                lst_txt = [fd_shingles, sd_shingles ] #excerpt_shingles
+                lst_txt = [fd_shingles, sd_shingles, excerpt_shingles ] 
                 
                 
                 
