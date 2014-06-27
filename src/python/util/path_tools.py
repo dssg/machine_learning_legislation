@@ -194,9 +194,9 @@ def doc_id_to_path(doc_id):
         if not record[3]:
             chamber='house'
         if record[4]:
-            return b.get_bill_path(( record[0], record[1], record[2]))
+            return b.get_bill_path( record[0], record[1], record[2])
         else:
-            return r.get_report_path( record[0], chamber, record[1], record[2] )
+            return r.get_report_path(record[0], chamber, record[1], record[2] )
         
     except Exception as ex:
         #traceback.print_stack()
