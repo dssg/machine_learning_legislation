@@ -1,5 +1,6 @@
 import os, sys
 import json
+import traceback
 
 class BillPathUtils:
     
@@ -120,7 +121,7 @@ class ReportPathUtils():
         return self.pathParts[-1]
         
     def get_report_path(self, congress, chamber, number, version):
-        return "%s%d/%s/%d/%s"%(self.rootDir, congress, chamber, number, version)
+        return "%s%d/%s/%s/%s"%(self.rootDir, congress, chamber, number, version)
         
     def get_all_versions(self, path_to_report):
         """
@@ -176,3 +177,30 @@ class ReportPathUtils():
         finally:
             conn.close()
     
+
+def doc_id_to_path(doc_id):
+    import psycopg2
+    b = BillPathUtils()
+    r = ReportPathUtils()
+    conn = psycopg2.connect(b.CONN_STRING)
+    try:
+        cmd = "select congress, number, version, senate, bill from documents, congress_meta_document \
+        where documents.congress_meta_document = congress_meta_document.id \
+        and documents.id = %s"
+        cur = conn.cursor()
+        cur.execute(cmd, (doc_id,) )
+        record = cur.fetchone()
+        chamber= 'senate'
+        if not record[3]:
+            chamber='house'
+        if record[4]:
+            return b.get_bill_path(( record[0], record[1], record[2]))
+        else:
+            return r.get_report_path( record[0], chamber, record[1], record[2] )
+        
+    except Exception as ex:
+        traceback.print_stack()
+        #print ex
+        #raise ex
+    finally:
+        conn.close()
