@@ -25,6 +25,8 @@ class bcolors:
     ENDC = '\033[0m' 
  
 stemmer = stem.PorterStemmer()
+
+THRESHOLD = 0.5
  
 def normalize_stem(s):
     words = tokenize.wordpunct_tokenize(s.lower().strip())
@@ -72,7 +74,7 @@ def get_earmarks():
     #print "number of earmarks", len(earmarks)
 
 
-def get_earmark_doc_ids(earmark_id):
+def get_earmark_docs(earmark_id):
     """
     given earmark id, return list of all docs that map to this earmark
     """
@@ -91,7 +93,7 @@ def get_entities(doc_id):
     get entities for doc_id
     """
     conn = psycopg2.connect(CONN_STRING)
-    columns = ["entity_text", "entity_type", "entity_offset", "entity_length", "entity_inferred_name"]
+    columns = ["id", "entity_text", "entity_type", "entity_offset", "entity_length", "entity_inferred_name"]
     cmd = "select "+", ".join(columns)+" from entities where document_id = %s and entity_type in ('Organization', 'Facility', 'Company', 'table_entity')"
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
     cur.execute(cmd, (doc_id,))
@@ -100,14 +102,11 @@ def get_entities(doc_id):
     return records
 
 
-def match(entity, text):
+def string_match(entity, text):
     return entity in text
-    
-def match_jaccard(entity_shingles, text_shingles):
-    #print entity_shingles, text_shingles
-    return (len(entity_shingles.intersection(text_shingles)) * 1.0) / max(1,len(entity_shingles.union(text_shingles)) )
-    
-def find_best_match(matches):
+
+
+def find_best_string_match(matches):
     """
     matches: set of entities
     """
@@ -116,39 +115,70 @@ def find_best_match(matches):
     print   sorted_desc_entities[:10] 
     if len(sorted_desc_entities) > 0:
         return sorted_desc_entities[0]
+    
+def shingle_match(entity_shingles, text_shingles):
+    #print entity_shingles, text_shingles
+    return (len(entity_shingles.intersection(text_shingles)) * 1.0) / max(1,len(entity_shingles.union(text_shingles)) )
+    
+
         
-def find_best_match_with_score(matches):
+def find_best_shingle_matches(matches):
     """
-    matches: list of tuples, such that tupleis (entity, score)
+    matches: list of tuples, such that tuple is (entity, score)
     """
-    sorted_desc_entities = sorted(matches, key=operator.itemgetter(1), reverse=True)
-    #return sorted_desc_entities[:5]
-    if len(sorted_desc_entities) > 0 and sorted_desc_entities[0][1] > 0.5:
-        return sorted_desc_entities[0]
+    best_matches = {}
+    for doc_id in matches.keys():
+        sorted_desc_entities = sorted(matches[doc_id], key=operator.itemgetter(0), reverse=True)
+        if len(sorted_desc_entities) > 0:
+            best_matches[doc_id] =  sorted_desc_entities[0]
+    return best_matches
+
+def update_earmark_offsets (earmark_id, matches):
+    """
+    If matching was succesfull, update the inferred_offest in DB"
+    """
+    conn = psycopg2.connect(CONN_STRING)
+    cur = conn.cursor()
+    for doc_id in matches.keys():
+        offset = matches[doc_id][1]['entity_offset']
+        length = matches[doc_id][1]['entity_length']
+        entity_id = matches[doc_id][1]['id']
+        print (offset, length, entity_id, earmark_id, doc_id)
+        cmd = "update earmark_documents set inferred_offset = %d, ingerred_length = %d, matched_entity_id = %d where earmark_id = %d and document_id = %d" % (offset, length, entity_id, earmark_id, doc_id)
+
+        cur.execute(cmd)
+    conn.commit()
+    conn.close()
+
+
 
 def main():
     earmarks = get_earmarks()
     num_matched = 0
     num_failed = 0
-    for e in earmarks:
-        normalized_short_desc = normalize(e['short_description'])
-        normalized_full_desc = normalize(e['full_description'])
+    num_matched_table = 0
+    num_matched_calais = 0
+    for earmark in earmarks:
+        normalized_short_desc = normalize(earmark['short_description'])
+        normalized_full_desc = normalize(earmark['full_description'])
         fd_shingles = shinglize(normalized_full_desc, 2)
         sd_shingles = shinglize(normalized_short_desc, 2)
         desc_short_matches=set()
         excerpt_matches =set()
         desc_full_matches =set()
-        matches = []
-        doc_ids = get_earmark_doc_ids(e['earmark_id'])
-        for doc in doc_ids:
+        matches = {}
+        docs = get_earmark_docs(earmark['earmark_id'])
+        for doc in docs:
+            doc_id = doc['document_id']
+            matches[doc_id] = []
             normalized_excerpt = normalize(doc['excerpt'])
             excerpt_shingles = shinglize(normalized_excerpt, 2)
-            print doc['document_id']
-            print path_tools.doc_id_to_path(doc['document_id'])
-            doc_entities = get_entities(doc['document_id'])
-            for doc_e in doc_entities:
-                normalized_entity_text = normalize(doc_e['entity_text'])
-                normalized_entity_inferred_name = normalize(doc_e['entity_inferred_name'])
+            print doc_id
+            print path_tools.doc_id_to_path(doc_id)
+            doc_entities = get_entities(doc_id)
+            for doc_entity in doc_entities:
+                normalized_entity_text = normalize(doc_entity['entity_text'])
+                normalized_entity_inferred_name = normalize(doc_entity['entity_inferred_name'])
                 if normalized_entity_text in earmarks_blacklist or \
                 normalized_entity_inferred_name in earmarks_blacklist:
                     continue
@@ -162,40 +192,35 @@ def main():
                 
                 
                 for pair in itertools.product(lst_entities, lst_txt):
-                    score = match_jaccard(*pair)
-                    if score > 0:
-                        matches.append( (pair[0], score) )
-                    
+                    score = shingle_match(*pair)
+                    if score > THRESHOLD:
+
+                        matches[doc_id].append( (score, doc_entity))
+
+
+    
                 
-                
-                # excerpt
-                """
-                if match(normalized_entity_text, normalized_excerpt):
-                    excerpt_matches.add(normalized_entity_text)
-                if match(normalized_entity_inferred_name, normalized_excerpt):
-                    excerpt_matches.add(normalized_entity_inferred_name)
-                # short description
-                if match(normalized_entity_text, normalized_short_desc):
-                    desc_short_matches.add(normalized_entity_text)
-                if match(normalized_entity_inferred_name, normalized_short_desc):
-                    desc_short_matches.add(normalized_entity_inferred_name)
-                # long description
-                if match(normalized_entity_text, normalized_full_desc):
-                    desc_full_matches.add(normalized_entity_text)
-                if match(normalized_entity_inferred_name, normalized_full_desc):
-                    desc_full_matches.add(normalized_entity_inferred_name)
-               """
-        #all_matches = desc_short_matches.union(excerpt_matches).union(desc_full_matches)  
-        #pprint( all_matches )         
-        best_match = find_best_match_with_score(matches)
-        if best_match:
+        best_matches = find_best_shingle_matches(matches)
+
+        for t in best_matches.values():
+            if t[1]['entity_type'] == "table_entity":
+                num_matched_table += 1
+            else:
+                num_matched_calais += 1
+
+
+        update_earmark_offsets(earmark['earmark_id'], best_matches)
+        if len(best_matches)>0:
             num_matched+=1
-            print bcolors.OKGREEN +"Earmark %d with description %s matched:\n === %s" %(e['earmark_id'] ,e['short_description'],best_match) + bcolors.ENDC   
+            print bcolors.OKGREEN +"Earmark %d with description %s matched:\n ===" %(earmark['earmark_id'] ,earmark['short_description'])
+            pprint(best_matches) 
+            print "\n\n"+bcolors.ENDC  
         else:
             num_failed+=1
-            print bcolors.WARNING + "No match found! for earmark %d,  %s" %(e['earmark_id'], e['short_description']) + bcolors.ENDC   
+            print bcolors.WARNING + "No match found! for earmark %d,  %s" %(earmark['earmark_id'], earmark['short_description']) + bcolors.ENDC   
         
         print "Matched: %d, Failed %d" %(num_matched, num_failed)
+        print "Table: %d, Calais %d" %(num_matched_table, num_matched_calais)
 
 
 if __name__=="__main__":
