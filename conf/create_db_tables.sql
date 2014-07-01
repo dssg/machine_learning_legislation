@@ -47,7 +47,8 @@ enacted_year integer,
 short_description varchar(512),
 full_description varchar(2048),
 earmark_type varchar(512),
-spendcom varchar(512)
+spendcom varchar(512),
+recipient varchar(512)
 );
 
 create table earmark_documents
@@ -58,7 +59,8 @@ document_id integer,
 page_number varchar(256),
 excerpt varchar(4096),
 inferred_offset integer,
-ingerred_length integer
+inferred_length integer, 
+matching_entity_id integer,
 );
 
 create table organization_allocation
