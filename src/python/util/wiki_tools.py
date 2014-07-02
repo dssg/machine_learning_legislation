@@ -8,8 +8,8 @@ def get_page_category(page_name):
     """
     cur = db.cursor()
     cur.execute("""SELECT cl_to FROM categorylinks cl
-                JOIN page p ON cl.cl_from = p.page_id
-                WHERE p.page_title='%s'""" % page_name)
+                JOIN (SELECT * FROM page where page_title='%s') p
+                ON cl.cl_from = p.page_id""" % page_name)
     categories = [result[0] for result in cur.fetchall()]
     return categories
 
