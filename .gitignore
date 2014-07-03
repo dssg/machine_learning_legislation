@@ -52,3 +52,9 @@ coverage.xml
 
 # Sphinx documentation
 docs/_build/
+<<<<<<< HEAD
+=======
+
+# configurationn files
+*.cfg
+>>>>>>> fbc96a7f09403e43aae9b11ed695928e6edd235e
