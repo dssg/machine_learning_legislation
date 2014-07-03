@@ -8,6 +8,7 @@ import path_tools
 from collections import Counter
 import csv
 from itertools import chain
+import math
 
 
 
@@ -26,12 +27,84 @@ class Table:
     def __str__(self):
         pass #print self.title, self.content
         
+class TableRow:
+    def __init__(self):
+        self.raw_text =""
+        self.cells = []
+        self.offset = 0
+        self.length = 0
+        self.number = 0
+    def __str__(self):
+        return  ' | '.join(map(str, self.cells))
+        
+class TableCell:
+    def __init__(self):
+        self.raw_text = ""
+        self.clean_text = ""
+        self.offset = 0
+        self.length = 0
+        
+    def __str__(self):
+        return self.clean_text
+            
+        
 class Paragraph:
     def __init__(self):
         self.content = []
         self.offset = 0
         self.length = 0
 
+class ParsingPrimitives:
+    def __init__(self):
+        self.dots_re = re.compile(r'\.{2,}')
+        self.spaces_re = re.compile(r'^[ ]+')
+        self.money_re = re.compile(r'\$*[\d,]+')
+        
+        
+    def has_dots(self, cell):
+        """
+        returns boolean indicating whether the cell has multiple consecutive dots
+        """
+        return self.dots_re.search(cell) != None
+        
+    def indentation_count(self, cell):
+        """
+        finds the number of empty spaces at the beginning of the cell
+        """
+        match = self.spaces_re.search(cell)
+        if match:
+            begin, end = match.span()
+            length = end - begin
+            return length
+        else:
+            return 0
+                
+    def ends_with_colon(self, cell):
+        return cell.strip().endswith(':')
+        
+    def is_money_cell(self, cell):
+        """
+        returns boolean whether a cell matches money regex
+        """
+        return money_re.search(cell) != None
+
+class Entropy:
+    def __init__(self):
+        pass
+    def compute_entropy(self,iterable):
+        """
+        computes the entropy of an iterable
+        each element in the iterable should implement the hash function
+        if it's not a standard type like str or int
+        """
+        counts = {}
+        n = len(iterable) * 1.0
+        for i in iterable:
+            counts[i] = counts.get(i,0) +1
+        entropy = 0
+        for k,v in counts.iteritems():
+            entropy += math.log((v/ n)) * (v/n) 
+        return -1 * entropy
 
 def get_paragraphs(fileobj, separator='\n'):
     paragraphs = []
@@ -94,7 +167,13 @@ def identify_tables(list_paragraphs):
             
     for table in tables:
         find_table_header(table)
-        find_table_rows(table)
+        table_type = detect_table_type(table)        
+        print table_type
+        if table_type == 'dashes':
+            parse_dashed_table(table)
+        elif table_type == 'dots':
+            parse_dots_table(table)
+            #find_table_rows(table)
         #get_candidate_entities(table)
         
     return tables
@@ -163,7 +242,127 @@ def get_candidate_entities(table):
     entities = [key for key in counts.keys() if (counts[key]<3 and not re.match(r'\$*[\d,]{3,}', key))]
     #pprint(entities)
     return entities       
+
+def detect_table_type(table):
+    """
+    detects the type of the table. it can be either dots or dashes
+    """
+    pp = ParsingPrimitives()
+    table_type = 'dashed'
+    has_dots = reduce(lambda a, b: a or b , map( pp.has_dots , table.content))
+    if has_dots:
+        return 'dots'
+    else:
+        return 'dashes'
+
+
+def parse_dashed_table(table):
+    """
+    parses a table of the dashed type
+    """
+    parse_table_structure(table)
+    for row in table.rows:
+        print row.number
+    return
+    block = []
+    row_number = 0
+    offset = 0
+    re_dashes = re.compile(r'^-{2,}')
+    #import pdb; pdb.set_trace()
+    for i in range(len(table.body)):
+        line = table.body[i]
+        if re_dashes.search(line) and len(block) > 0:
+            cell_contents = parse_header(block)
+            row = TableRow()
+            row_number +=1
+            row.number = row_number
+            row.offset = offset
+            row.raw_text = ''.join(block)
+            row.length = len(row.raw_text)
+            offset += row.length
+            cell_offset = 0
+            for part in cell_contents:
+                cell = TableCell()
+                cell.raw_text = part
+                cell.clean_text = part
+                cell.offset = row.raw_text.find(part.split()[0],cell_offset)
+                cell.length = len(cell.raw_text)
+                cell_offset += cell.length
+                row.cells.append(cell)
+            table.rows.append(row)
+            block = []                
+        else:
+            block.append(line)
+
+def parse_dots_table(table):
+    parse_table_structure(table)
         
+def parse_table_structure(table):
+    """
+    parses the structure of a table into equal number of columns
+    """
+    find_table_rows(table)
+    #for r in table.rows:
+    #    find_row_cells(row)
+    #applying multi line table heuristic
+    heat_map = []
+    max_line_length = max(map(lambda a: len(a.raw_text) ,table.rows))
+    for row in table.rows:
+        padded_str = row.raw_text[:-1] + ' '*(max_line_length-len(row.raw_text)) + '\n'
+        empty_chars = set( [i for i in range(len(padded_str)) if padded_str[i] ==' '])
+        heat_map.append(empty_chars)
+    intersections = reduce (lambda a, b : a.intersection(b), heat_map)
+    indices = sorted(list(intersections) )
+    boundaries = [('a',0),] # just for sanity check, we know it's char
+    i = 1
+    begin_index = indices[0]
+    prev_index = indices[0]
+    while i < len(indices):
+        if indices[i] - prev_index == 1:
+            prev_index = indices[i]
+        else:
+            boundaries.append( (begin_index, prev_index))
+            begin_index = indices[i]
+            prev_index = indices[i]
+        i+=1
+    boundaries.append((begin_index, prev_index))
+    boundaries.append((-1,'a'))
+    for row in table.rows:
+        for i  in range(len(boundaries)-1):
+            cell = TableCell()
+            cell.raw_text = row.raw_text[boundaries[i][1]:boundaries[i+1][0]]
+            cell.clean_text = cell.raw_text.strip().rstrip('.')
+            cell.offset = row.raw_text.find(cell.raw_text, boundaries[i][1])
+            cell.length = len(cell.raw_text)
+            row.cells.append(cell)
+
+def compute_table_entropy(table):
+    e = Entropy()
+    if len(table.rows) ==0 :
+        return 0
+    columns = [ [table.rows[i].cells[j].clean_text for i in range(len(table.rows)) ] 
+    for j in range(len(table.rows[0].cells)) ]
+    entropies = []
+    for i in range(len(columns)):
+        entropies.append(e.compute_entropy(columns[i]))
+        #print "Entropy of Column %d equals %f" %(i+1, e.compute_entropy(columns[i])) 
+    return entropies  
+
+def find_row_cells(row):
+    """
+    given TableRow object, segments it into cells
+    """
+    parts = re.split("[ ]{2,}", row.raw_text)
+    
+    if len(parts) > 0:
+        for part in parts:
+            cell = TableCell()
+            cell.raw_text = part
+            clean_part = part.strip().rstrip('.')
+            cell.clean_text = clean_part
+            if re_dashes.search(clean_part) or len(clean_part) == 0:
+                continue 
+            row.cells.append(cell)        
 
 def find_table_rows(table):
     """
@@ -172,26 +371,31 @@ def find_table_rows(table):
     """
     re_dashes = re.compile(r'^-{2,}')
     re_ignore = re.compile(r'^[\.=-]+')
-    rows = []
+    re_spaces = re.compile(r'[ ]{2,}')
+    offset = 0
+    row_number = -1
+    max_dashes = get_max_dash_lines_count(table.body)
+    
     for i in range(len(table.body)):
-        row = []
+        row_number += 1
+        row = TableRow()
+        row.number = row_number
         line = table.body[i]
+        row.raw_text = line
+        row.offset = offset
+        line_length = len(line)
+        row.length = line_length
+        offset += line_length
         if len(line.strip()) == 0:
             continue
         if re_ignore.search(line.strip()):
             continue
-        parts = re.split("[ ]{2,}", line)
-        if len(parts) > 0:
-            for part in parts:
-                clean_part = part.strip().rstrip('.')
-                if re_dashes.search(clean_part) or len(clean_part) == 0:
-                    continue
-                row.append(clean_part)
-            rows.append(row)
-    table.rows = rows
-                
-                
+        if not re_spaces.search(line):
+            continue
+        table.rows.append(row)
+        
 
+                
 
 def get_table_title(list_paragraphs):
     title = []
@@ -283,6 +487,7 @@ if __name__=="__main__":
             print "title:" 
             pprint(t.title)
             print '='*50
+            
             print "content" 
             pprint(t.content) 
             print "Table offset %d, length %d" %(t.offset, t.length)
@@ -290,8 +495,11 @@ if __name__=="__main__":
             pprint(t.header)
             print "Rows:"
             for row in t.rows: print row
+            print 'Entropy:'
+            print compute_table_entropy(t)
+            print '=' *50
             print'\n'*8
-            pprint (t.candidate_entities)
+            #pprint (t.candidate_entities)
     if args.paragraphs:
         for p in paragrapghs_list:
             pprint(p.content)
