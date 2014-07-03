@@ -42,14 +42,14 @@ def get_categories(page_name, is_category=False):
     categories = [result[0] for result in cur.fetchall()]
     return categories
 
-def get_wiki_urls_google(entity_name):
+def get_wiki_page_title_google(entity_name):
     query = "%s+site:en.wikipedia.org" % entity_name.replace(" ", "+")
     google_url = "https://ajax.googleapis.com/ajax/services/search/web?v=1.0&q=%s" % query
     r = requests.get(google_url)
     results = r.json()["responseData"]["results"]
-    return [result["url"] for result in results]
+    return [result["url"].split("/")[-1] for result in results]
 
-def get_wiki_urls_bing(entity_name):
+def get_wiki_page_title_bing(entity_name):
     bing_url = "https://api.datamarket.azure.com/Bing/SearchWeb/v1/Web"
     key = get_key("bing")
     quoted_query = urllib2.quote("%s site:en.wikipedia.org" % entity_name)
@@ -62,7 +62,7 @@ def get_wiki_urls_bing(entity_name):
     content = urllib2.urlopen(url).read()
     j = json.loads(content)
     user_ids = []
-    return [result["Url"] for result in j["d"]["results"]]
+    return [result["Url"].split("/")[-1] for result in j["d"]["results"]]
 
 def get_key(key_type):
     cp = ConfigParser.ConfigParser()
