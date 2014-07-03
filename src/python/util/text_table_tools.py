@@ -255,12 +255,56 @@ def detect_table_type(table):
     else:
         return 'dashes'
 
+def merge_rows(rows):
+    """
+    given  rows, they are merged into a NEW row
+    assuming the first row appears before others
+    """
+    row = TableRow()
+    row.number = rows[0].number
+    row.offset = rows[0].offset
+    row.length = sum(map ( lambda row: row.length , rows)) + len(rows) -1
+    row.raw_text = ' '.join( map(lambda row: row.raw_text, rows))
+    for i in range(len(rows[0].cells)):
+        cell = TableCell()
+        cell.offset = rows[0].cells[i].offset
+        cell.raw_text = ' '.join(map(lambda row: row.cells[i].raw_text, rows))
+        cell.length = len(cell.raw_text)
+        cell.clean_text = ' '.join(map(lambda row: row.cells[i].clean_text, rows)).strip()
+        row.cells.append(cell)
+    return row        
 
 def parse_dashed_table(table):
     """
     parses a table of the dashed type
     """
     parse_table_structure(table)
+    rows_to_merge = []
+    candidates = [table.rows[0],]
+     
+    for i in range(1,len(table.rows)):
+        row = table.rows[i]
+        if row.number - candidates[-1].number  ==1:
+            candidates.append(row)
+        else:
+            if len(candidates) > 1:
+                rows_to_merge.append(candidates)
+            candidates = [row,]
+    dirty_row_numbers = set()
+    for candidates in rows_to_merge:
+        for row in candidates:
+            dirty_row_numbers.add(row.number)
+    new_rows = []
+    for candidates in rows_to_merge:
+        new_row = merge_rows(candidates)
+        new_rows.append(new_row)
+    rows = [ row for row in table.rows if row.number not in dirty_row_numbers ]
+    rows += new_rows
+    rows = sorted(rows, key = lambda a: a.number)
+    table.rows = rows
+            
+                
+            
     for row in table.rows:
         print row.number
     return
@@ -296,6 +340,10 @@ def parse_dashed_table(table):
 
 def parse_dots_table(table):
     parse_table_structure(table)
+    columns = [ [table.rows[i].cells[j].clean_text for i in range(len(table.rows)) ] 
+    for j in range(len(table.rows[0].cells)) ]
+    
+    
         
 def parse_table_structure(table):
     """
