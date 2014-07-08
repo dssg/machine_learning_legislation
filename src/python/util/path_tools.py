@@ -44,7 +44,7 @@ class BillPathUtils:
         version: string version, example ih, rs
         """
         chars = "".join([ch for ch in number if ch.isalpha()])
-        return "%s%d/bills/%s/%s/text-versions/%s/" %(self.rootDir, congress, chars,number,version )
+        return "%s%d/bills/%s/%s/text-versions/%s/document.txt" %(self.rootDir, congress, chars,number,version )
         
     def get_all_versions(self, path_to_bill):
         """

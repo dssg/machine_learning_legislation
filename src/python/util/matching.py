@@ -63,8 +63,8 @@ CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dss
 
 def get_earmarks():
     conn = psycopg2.connect(CONN_STRING)
-    columns = ["earmark_id", "full_description", "short_description"]
-    cmd = "select "+", ".join(columns)+" from earmarks where enacted_year = 2010"
+    columns = ["earmark_id", "full_description", "short_description", "recipient"]
+    cmd = "select "+", ".join(columns)+" from earmarks where enacted_year = 2008"
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
     cur.execute(cmd)
     earmarks = cur.fetchall()
@@ -79,13 +79,13 @@ def get_earmark_docs(earmark_id):
     given earmark id, return list of all docs that map to this earmark
     """
     conn = psycopg2.connect(CONN_STRING)
-    columns = ["document_id","excerpt"]
+    columns = ["document_id"]
     cmd = "select "+", ".join(columns)+" from earmark_documents where earmark_id = %s"
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
     cur.execute(cmd, (earmark_id,))
     docs = cur.fetchall()
     conn.close()
-    return docs
+    return {doc['document_id'] for doc in docs}
 
 
 def get_entities(doc_id):
@@ -161,18 +161,19 @@ def main():
     for earmark in earmarks:
         normalized_short_desc = normalize(earmark['short_description'])
         normalized_full_desc = normalize(earmark['full_description'])
+        normalized_recipient = normalize(earmark['recipient'])
         fd_shingles = shinglize(normalized_full_desc, 2)
         sd_shingles = shinglize(normalized_short_desc, 2)
+        r_shingles = shinglize(normalized_recipient, 2)
         desc_short_matches=set()
         excerpt_matches =set()
         desc_full_matches =set()
         matches = {}
         docs = get_earmark_docs(earmark['earmark_id'])
-        for doc in docs:
-            doc_id = doc['document_id']
+        for doc_id in docs:
             matches[doc_id] = []
-            normalized_excerpt = normalize(doc['excerpt'])
-            excerpt_shingles = shinglize(normalized_excerpt, 2)
+            #normalized_excerpt = normalize(doc['excerpt'])
+            #excerpt_shingles = shinglize(normalized_excerpt, 2)
             print doc_id
             print path_tools.doc_id_to_path(doc_id)
             doc_entities = get_entities(doc_id)
@@ -187,7 +188,7 @@ def main():
                 e_name_shingles = shinglize(normalized_entity_inferred_name, 2)
                 
                 lst_entities = [e_text_shingles, e_name_shingles]
-                lst_txt = [fd_shingles, sd_shingles, excerpt_shingles ] 
+                lst_txt = [fd_shingles, sd_shingles, r_shingles] #excerpt_shingles
                 
                 
                 
