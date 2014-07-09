@@ -365,10 +365,10 @@ def fix_multiline(table, column_index):
     pp = ParsingPrimitives()
     i = len(table.rows) - 1
     merge_blocks = []
-    print "fixing multi line for table\n", table
+    #print "fixing multi line for table\n", table
     while i > 0:
-        print i, table.rows[i]
-        print "previous row", table.rows[i-1]
+        #print i, table.rows[i]
+        #print "previous row", table.rows[i-1]
         pprint(merge_blocks)
         cell = table.rows[i].cells[column_index].raw_text
         prev_cell = table.rows[i-1].cells[column_index].raw_text
@@ -404,7 +404,7 @@ def fix_multiline(table, column_index):
                     i = i -1
                 elif indent_count > prev_indent_count:
                     if row_has_money and not prev_row_with_money:
-                        print "only one has money, going in"
+                        #print "only one has money, going in"
                         # only the current row has money, hence stopped at first occurance of money
                         #means that money appearson the latter row
                         j= i-1
