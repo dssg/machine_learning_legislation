@@ -35,6 +35,7 @@ def get_entities(path, conn):
             path_util = path_tools.BillPathUtils(path  = path)
 
         docid = path_util.get_db_document_id()
+        path = "/mnt/data/sunlight/test_set_tables/dots2.txt"
 
 
         fields = ["entity_text", "entity_type", "entity_offset", "entity_length", "entity_inferred_name", "source", "document_id"]
@@ -45,19 +46,19 @@ def get_entities(path, conn):
 
 
         for table in tables:
-            text = "".join(table.content)
-            prev_entitities = {}
-            entities = text_table_tools.get_candidate_entities(table)
-            for e in entities:
-                paragraph_offset = text.find(e, prev_entitities.get(e, 0))
-                prev_entitities[e] = paragraph_offset + len(e)
-                offset = table.offset+paragraph_offset
-                csv_row = [e, "table_entity", str(offset), len(e), e, "table", str(docid)]
-                csv_rows.append(csv_row)
+            column_indices = text_table_tools.get_candidate_columns(table)
+            print "cloumn indices: ", column_indices
+            for row in table.rows:
+                for idx in column_indices:
+                    cell = row.cells[idx]
+                    print "cell: ", cell.clean_text
+                    csv_row = [cell.clean_text, "table_entity", str(cell.offset), str(cell.length), cell.clean_text, "table", str(docid)]
+                    csv_rows.append(csv_row)
 
         cmd = "insert into entities (" + ", ".join(fields) + ") values (%s, %s, %s, %s, %s, %s, %s)"
         cur = conn.cursor()
         cur.executemany(cmd, csv_rows)
+        exit()
         conn.commit()
     except Exception as e:
         print e
@@ -66,7 +67,7 @@ def get_entities(path, conn):
 
 years = [ "110", "111","109", "108"] 
 
-base="/mnt/data/sunlight/bills/"
+base="/mnt/data/sunlight/congress_reports/"
 
 
 

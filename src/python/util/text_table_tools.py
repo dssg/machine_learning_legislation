@@ -22,7 +22,6 @@ class Table:
         self.header = []
         self.rows = []
         self.row_offsets = []
-        self.candidate_entities = []
         
     def __str__(self):
         pass #print self.title, self.content
@@ -304,6 +303,24 @@ def parse_dashed_table(table):
     rows += new_rows
     rows = sorted(rows, key = lambda a: a.number)
     table.rows = rows
+
+def get_candidate_columns(table):
+    columns = [ [table.rows[i].cells[j].clean_text for i in range(len(table.rows)) ] for j in range(len(table.rows[0].cells)) ]
+    pp = ParsingPrimitives()
+    # merge multi line columns
+    column_candidates = set()
+    for i in range(len(columns)):
+        count_money_cells = len([cell for cell in columns[i] if pp.is_money_cell(cell)]) * 1.0
+        if count_money_cells / len(columns[i]) < 0.25:
+            # if it has less than 25% money, then it's text column and not money
+            column_candidates.add(i)
+    # filter columns by entropy. Anything with entropy less than one?
+    e = Entropy()
+    MIN_ENTROPY = 1.2
+    column_candidates = [ (i, e.compute_entropy(columns[i]) ) for i in column_candidates if e.compute_entropy(columns[i]) >= MIN_ENTROPY  ]
+    column_candidates = [pair[0] for pair in sorted(column_candidates, key=operator.itemgetter(1), reverse=True)]
+    return column_candidates
+
     
 
 def parse_dots_table(table):
