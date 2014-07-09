@@ -369,7 +369,7 @@ def fix_multiline(table, column_index):
     while i > 0:
         #print i, table.rows[i]
         #print "previous row", table.rows[i-1]
-        pprint(merge_blocks)
+        #pprint(merge_blocks)
         cell = table.rows[i].cells[column_index].raw_text
         prev_cell = table.rows[i-1].cells[column_index].raw_text
         #print cell, prev_cell
