@@ -23,6 +23,7 @@ class Table:
         self.rows = []
         self.row_offsets = []
         self.candidate_entities = []
+        self.column_candidates = []
         
     def __str__(self):
         pass #print self.title, self.content
