@@ -22,9 +22,11 @@ class Table:
         self.header = []
         self.rows = []
         self.row_offsets = []
+        self.candidate_entities = []
+        self.column_candidates = []
         
     def __str__(self):
-        pass #print self.title, self.content
+        return "\n".join(map(str, self.rows))
         
 class TableRow:
     def __init__(self):
@@ -146,7 +148,7 @@ def identify_tables(list_paragraphs):
                 line_numbers = get_line_numbers_matching_re(p.content, r"^---*", match_length=dashes_length)
                 if abs(line_numbers[1]-line_numbers[0]) <= MAX_DISTANCE:
                     # apply the three dash lines heurstic
-                    for j in range(i+1, len(list_paragraphs)):
+                    for j in range(i+1, len(list_paragraphs)-1):
                         p_next = list_paragraphs[j]
                         p_next_dashes_length , p_next_num_lines = get_max_dash_lines_count(p_next.content)
                         i = j
@@ -167,7 +169,6 @@ def identify_tables(list_paragraphs):
     for table in tables:
         find_table_header(table)
         table_type = detect_table_type(table)        
-        #print table_type
         if table_type == 'dashes':
             parse_dashed_table(table)
         elif table_type == 'dots':
@@ -203,6 +204,8 @@ def parse_header(header_content):
     header_content: list of lines
     """
     words = []
+    headers = []
+
     re_dashes = re.compile('^-{2,}')
     for i in range(len(header_content)):
         line = header_content[i]
@@ -218,10 +221,14 @@ def parse_header(header_content):
                     offset = line.find(part,prev_token_offset)
                     prev_token_offset = offset + len(part)
                     words.append( (clean_part, i, offset, offset+len(clean_part)))
-                
+    
+
     s_words= sorted(words, key=operator.itemgetter(2))
     clusters = []
-    clusters.append([s_words[0],])
+
+    if len(s_words) > 0:
+        clusters.append([s_words[0],])
+        
     for i in range(1,len(s_words)):
         w = s_words[i]
         prev_w = s_words[i-1]
@@ -230,7 +237,6 @@ def parse_header(header_content):
         else:
             clusters.append([w,])
             
-    headers = []
     for cluster in clusters:
         headers.append(' '.join(map(lambda a: a[0], sorted(cluster, key=operator.itemgetter(1)))))
     return headers
@@ -304,7 +310,11 @@ def parse_dashed_table(table):
     rows = sorted(rows, key = lambda a: a.number)
     table.rows = rows
 
+
 def get_candidate_columns(table):
+    if len(table.rows) == 0:
+        return []
+
     columns = [ [table.rows[i].cells[j].clean_text for i in range(len(table.rows)) ] for j in range(len(table.rows[0].cells)) ]
     pp = ParsingPrimitives()
     # merge multi line columns
@@ -357,6 +367,7 @@ def fix_multiline(table, column_index):
     merge_blocks = []
     while i > 0:
         #print i, table.rows[i]
+        #print "previous row", table.rows[i-1]
         #pprint(merge_blocks)
         cell = table.rows[i].cells[column_index].raw_text
         prev_cell = table.rows[i-1].cells[column_index].raw_text
@@ -396,12 +407,13 @@ def fix_multiline(table, column_index):
                         # only the current row has money, hence stopped at first occurance of money
                         #means that money appearson the latter row
                         j= i-1
-                        while j >= 0:
+                        while j >= 1:
                             j = j-1
                             if row_has_money(table.rows[j]) or j ==0:
                                 merge_blocks.append( table.rows[j+1:i+1] )
                                 i = j
                                 break
+                        if j <=0: break 
                     else:
                         # previous row has money, then merge and exit
                         merge_blocks.append( table.rows[i-1:i+1] )
@@ -453,7 +465,7 @@ def parse_table_structure(table):
     max_line_length = max(map(lambda a: len(a.raw_text) ,table.rows))
     for row in table.rows:
         padded_str = row.raw_text[:-1] + ' '*(max_line_length-len(row.raw_text)) + '\n'
-        empty_chars = set( [i for i in range(len(padded_str)) if padded_str[i] ==' '])
+        empty_chars = set( [i for i in range(len(padded_str)) if padded_str[i] in [' ', '-'] ])
         heat_map.append(empty_chars)
     intersections = reduce (lambda a, b : a.intersection(b), heat_map)
     indices = sorted(list(intersections) )
@@ -481,7 +493,7 @@ def parse_table_structure(table):
             #print i
             cell = TableCell()
             cell.raw_text = row.raw_text[boundaries[i][1]:boundaries[i+1][0]]
-            cell.clean_text = cell.raw_text.strip().rstrip('.')
+            cell.clean_text = cell.raw_text.strip().rstrip('.').strip('-')
             cell.offset = row.raw_text.find(cell.raw_text, boundaries[i][1])
             cell.length = len(cell.raw_text)
             row.cells.append(cell)
@@ -523,6 +535,13 @@ def find_table_rows(table):
     re_dashes = re.compile(r'^-{2,}')
     re_ignore = re.compile(r'^[\.=-]+')
     re_spaces = re.compile(r'[ ]{2,}')
+
+    dots_re = re.compile(r"\.\.\.")
+    digit_re = re.compile(r"\d+")
+    dash_re = re.compile(r"---")
+    spaces_re = re.compile(r'[\S]+[ ]{2,}')
+
+
     offset = 0
     row_number = -1
     max_dashes = get_max_dash_lines_count(table.body)
@@ -543,7 +562,8 @@ def find_table_rows(table):
             continue
         #if not re_spaces.search(line):
         #    continue
-        table.rows.append(row)
+        if (dots_re.search(line) and digit_re.search(line)) or (spaces_re.search(line) and digit_re.search(line)) or dash_re.search(line):
+            table.rows.append(row)
         
 
                 
