@@ -169,7 +169,7 @@ def identify_tables(list_paragraphs):
     for table in tables:
         find_table_header(table)
         table_type = detect_table_type(table)        
-        #print table_type
+        print table_type
         if table_type == 'dashes':
             parse_dashed_table(table)
         elif table_type == 'dots':
@@ -341,6 +341,7 @@ def fix_multiline(table, column_index):
     merge_blocks = []
     while i > 0:
         #print i, table.rows[i]
+        #print "previous row", table.rows[i-1]
         #pprint(merge_blocks)
         cell = table.rows[i].cells[column_index].raw_text
         prev_cell = table.rows[i-1].cells[column_index].raw_text
@@ -380,12 +381,13 @@ def fix_multiline(table, column_index):
                         # only the current row has money, hence stopped at first occurance of money
                         #means that money appearson the latter row
                         j= i-1
-                        while j >= 0:
+                        while j >= 1:
                             j = j-1
                             if row_has_money(table.rows[j]) or j ==0:
                                 merge_blocks.append( table.rows[j+1:i+1] )
                                 i = j
                                 break
+                        if j <=0: break 
                     else:
                         # previous row has money, then merge and exit
                         merge_blocks.append( table.rows[i-1:i+1] )
