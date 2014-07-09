@@ -210,7 +210,7 @@ def main():
                 num_matched_calais += 1
 
 
-        #update_earmark_offsets(earmark['earmark_id'], best_matches)
+        update_earmark_offsets(earmark['earmark_id'], best_matches)
         if len(best_matches)>0:
             num_matched+=1
             print bcolors.OKGREEN +"Earmark %d with description %s matched:\n ===" %(earmark['earmark_id'] ,earmark['short_description'])
