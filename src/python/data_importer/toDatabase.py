@@ -6,7 +6,19 @@ import random
 import psycopg2
 import csv, pandas as pd
 
-rows  = []
+infile = open('2009_db.csv', 'rb')
+outfile = open('tmpfile.csv', 'wb')
+BLOCKSIZE = 65536 # experiment with size
+while True:
+    block = infile.read(BLOCKSIZE)
+    if not block: break
+    outfile.write(block.decode('ascii').encode('utf8'))
+infile.close()
+outfile.close()
+
+
+
+rows = []
 stuff = pd.read_csv(codecs.open('tmpfile.csv','r','utf-8'))
 i = 0
 for row in stuff.iterrows():
