@@ -2,7 +2,9 @@
 # <nbformat>3.0</nbformat>
 
 # <codecell>
-
+import os, sys, inspect
+sys.path.insert(0, os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],".."))))
+from util import path_tools, path_to_docid
 import pandas as pd, numpy as np, csv
 import re, time,sys, itertools
 from collections import Counter

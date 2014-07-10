@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
+import os, sys, inspect
+sys.path.insert(0, os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],".."))))
+from util import path_tools, path_to_docid
 import numpy as np, pandas as pd
-import re, time, sys, csv
-import path_to_docid
+import re, time, csv
 import toDatabase as td
 import itertools 
 from collections import Counter
