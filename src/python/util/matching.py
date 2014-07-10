@@ -64,7 +64,7 @@ CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dss
 def get_earmarks():
     conn = psycopg2.connect(CONN_STRING)
     columns = ["earmark_id", "full_description", "short_description"]
-    cmd = "select "+", ".join(columns)+" from earmarks where enacted_year = 2010"
+    cmd = "select "+", ".join(columns)+" from earmarks where enacted_year = 2008"
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
     cur.execute(cmd)
     earmarks = cur.fetchall()
