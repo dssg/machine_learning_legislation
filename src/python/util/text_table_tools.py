@@ -23,9 +23,10 @@ class Table:
         self.rows = []
         self.row_offsets = []
         self.candidate_entities = []
+        self.column_candidates = []
         
     def __str__(self):
-        pass #print self.title, self.content
+        return "\n".join(map(str, self.rows))
         
 class TableRow:
     def __init__(self):
@@ -58,7 +59,7 @@ class ParsingPrimitives:
     def __init__(self):
         self.dots_re = re.compile(r'\.{2,}')
         self.spaces_re = re.compile(r'^[ ]+')
-        self.money_re = re.compile(r'\$*[\d,]+')
+        self.money_re = re.compile(r'^\$*-*[\d,]+$')
         
         
     def has_dots(self, cell):
@@ -80,13 +81,13 @@ class ParsingPrimitives:
             return 0
                 
     def ends_with_colon(self, cell):
-        return cell.strip().endswith(':')
+        return cell.strip().rstrip('.').endswith(':')
         
     def is_money_cell(self, cell):
         """
         returns boolean whether a cell matches money regex
         """
-        return money_re.search(cell) != None
+        return self.money_re.search(cell.strip()) != None
 
 class Entropy:
     def __init__(self):
@@ -147,7 +148,7 @@ def identify_tables(list_paragraphs):
                 line_numbers = get_line_numbers_matching_re(p.content, r"^---*", match_length=dashes_length)
                 if abs(line_numbers[1]-line_numbers[0]) <= MAX_DISTANCE:
                     # apply the three dash lines heurstic
-                    for j in range(i+1, len(list_paragraphs)):
+                    for j in range(i+1, len(list_paragraphs)-1):
                         p_next = list_paragraphs[j]
                         p_next_dashes_length , p_next_num_lines = get_max_dash_lines_count(p_next.content)
                         i = j
@@ -168,7 +169,6 @@ def identify_tables(list_paragraphs):
     for table in tables:
         find_table_header(table)
         table_type = detect_table_type(table)        
-        print table_type
         if table_type == 'dashes':
             parse_dashed_table(table)
         elif table_type == 'dots':
@@ -204,6 +204,8 @@ def parse_header(header_content):
     header_content: list of lines
     """
     words = []
+    headers = []
+
     re_dashes = re.compile('^-{2,}')
     for i in range(len(header_content)):
         line = header_content[i]
@@ -219,10 +221,14 @@ def parse_header(header_content):
                     offset = line.find(part,prev_token_offset)
                     prev_token_offset = offset + len(part)
                     words.append( (clean_part, i, offset, offset+len(clean_part)))
-                
+    
+
     s_words= sorted(words, key=operator.itemgetter(2))
     clusters = []
-    clusters.append([s_words[0],])
+
+    if len(s_words) > 0:
+        clusters.append([s_words[0],])
+        
     for i in range(1,len(s_words)):
         w = s_words[i]
         prev_w = s_words[i-1]
@@ -231,7 +237,6 @@ def parse_header(header_content):
         else:
             clusters.append([w,])
             
-    headers = []
     for cluster in clusters:
         headers.append(' '.join(map(lambda a: a[0], sorted(cluster, key=operator.itemgetter(1)))))
     return headers
@@ -259,7 +264,7 @@ def merge_rows(rows):
     """
     given  rows, they are merged into a NEW row
     assuming the first row appears before others
-    """
+    """    
     row = TableRow()
     row.number = rows[0].number
     row.offset = rows[0].offset
@@ -279,6 +284,8 @@ def parse_dashed_table(table):
     parses a table of the dashed type
     """
     parse_table_structure(table)
+    if len(table.rows) ==0:
+        return
     rows_to_merge = []
     candidates = [table.rows[0],]
      
@@ -302,47 +309,147 @@ def parse_dashed_table(table):
     rows += new_rows
     rows = sorted(rows, key = lambda a: a.number)
     table.rows = rows
-            
-                
-            
-    for row in table.rows:
-        print row.number
-    return
-    block = []
-    row_number = 0
-    offset = 0
-    re_dashes = re.compile(r'^-{2,}')
-    #import pdb; pdb.set_trace()
-    for i in range(len(table.body)):
-        line = table.body[i]
-        if re_dashes.search(line) and len(block) > 0:
-            cell_contents = parse_header(block)
-            row = TableRow()
-            row_number +=1
-            row.number = row_number
-            row.offset = offset
-            row.raw_text = ''.join(block)
-            row.length = len(row.raw_text)
-            offset += row.length
-            cell_offset = 0
-            for part in cell_contents:
-                cell = TableCell()
-                cell.raw_text = part
-                cell.clean_text = part
-                cell.offset = row.raw_text.find(part.split()[0],cell_offset)
-                cell.length = len(cell.raw_text)
-                cell_offset += cell.length
-                row.cells.append(cell)
-            table.rows.append(row)
-            block = []                
-        else:
-            block.append(line)
+
+
+def get_candidate_columns(table):
+    if len(table.rows) == 0:
+        return []
+
+    columns = [ [table.rows[i].cells[j].clean_text for i in range(len(table.rows)) ] for j in range(len(table.rows[0].cells)) ]
+    pp = ParsingPrimitives()
+    # merge multi line columns
+    column_candidates = set()
+    for i in range(len(columns)):
+        count_money_cells = len([cell for cell in columns[i] if pp.is_money_cell(cell)]) * 1.0
+        if count_money_cells / len(columns[i]) < 0.25:
+            # if it has less than 25% money, then it's text column and not money
+            column_candidates.add(i)
+    # filter columns by entropy. Anything with entropy less than one?
+    e = Entropy()
+    MIN_ENTROPY = 1.2
+    column_candidates = [ (i, e.compute_entropy(columns[i]) ) for i in column_candidates if e.compute_entropy(columns[i]) >= MIN_ENTROPY  ]
+    column_candidates = [pair[0] for pair in sorted(column_candidates, key=operator.itemgetter(1), reverse=True)]
+    return column_candidates
+
+    
 
 def parse_dots_table(table):
     parse_table_structure(table)
+    if len(table.rows) == 0:
+        return
     columns = [ [table.rows[i].cells[j].clean_text for i in range(len(table.rows)) ] 
     for j in range(len(table.rows[0].cells)) ]
     
+    pp = ParsingPrimitives()
+    # merge multi line columns
+    column_candidates = set()
+    for i in range(len(columns)):
+        count_money_cells = len([cell for cell in columns[i] if pp.is_money_cell(cell)]) * 1.0
+        if count_money_cells / len(columns[i]) < 0.25:
+            # if it has less than 25% money, then it's text column and not money
+            column_candidates.add(i)
+    # filter columns by entropy. Anything with entropy less than one?
+    e = Entropy()
+    MIN_ENTROPY = 1.2
+    column_candidates = [ (i, e.compute_entropy(columns[i]) ) for i in column_candidates if e.compute_entropy(columns[i]) >= MIN_ENTROPY  ]
+    column_candidates = [pair[0] for pair in sorted(column_candidates, key=operator.itemgetter(1), reverse=True)]
+    #print column_candidates
+    for column_index in column_candidates:
+        #print "fixing rows based on column %d" %(column_index)
+        fix_multiline(table, column_index)
+    
+def fix_multiline(table, column_index):
+    """
+    merges rows together using the column identified by column_index
+    """
+    pp = ParsingPrimitives()
+    i = len(table.rows) - 1
+    merge_blocks = []
+    #print "fixing multi line for table\n", table
+    while i > 0:
+        #print i, table.rows[i]
+        #print "previous row", table.rows[i-1]
+        #pprint(merge_blocks)
+        cell = table.rows[i].cells[column_index].raw_text
+        prev_cell = table.rows[i-1].cells[column_index].raw_text
+        #print cell, prev_cell
+        row_with_money = row_has_money(table.rows[i])
+        prev_row_with_money = row_has_money(table.rows[i-1])
+        indent_count = pp.indentation_count(cell)
+        prev_indent_count = pp.indentation_count(prev_cell)
+        prev_ends_in_colon = pp.ends_with_colon(prev_cell)
+        if row_with_money and prev_row_with_money:
+            #both rows have allocations, can't be multi line row
+            #print "both have money"
+            i -=1
+            continue
+        else:
+            # candidate for merging
+            if not (row_with_money or prev_row_with_money):
+                # keep going up until first row with money
+                #print "both dont have money, going in"
+                j= i-1
+                while j >= 0:
+                    j = j-1
+                    #print j
+                    if row_has_money(table.rows[j]):
+                        merge_blocks.append( table.rows[j:i+1] )
+                        i = j-1
+                        break  
+                if j <=0: break              
+            else:
+                #only one of them has money
+                if prev_ends_in_colon:
+                    #print "ends with colon"
+                    i = i -1
+                elif indent_count > prev_indent_count:
+                    if row_has_money and not prev_row_with_money:
+                        #print "only one has money, going in"
+                        # only the current row has money, hence stopped at first occurance of money
+                        #means that money appearson the latter row
+                        j= i-1
+                        while j >= 1:
+                            j = j-1
+                            if row_has_money(table.rows[j]) or j ==0:
+                                merge_blocks.append( table.rows[j+1:i+1] )
+                                i = j
+                                break
+                        if j <=0: break 
+                    else:
+                        # previous row has money, then merge and exit
+                        merge_blocks.append( table.rows[i-1:i+1] )
+                        i = i -2
+                else:
+                    #print "didn't match anything"
+                    i -=1   
+    
+    dirty_row_numbers = set()
+    for candidates in merge_blocks:
+        for row in candidates:
+            dirty_row_numbers.add(row.number)
+    new_rows = []
+    for candidates in merge_blocks:
+        if len(candidates) == 0:
+            print "something is wrong, shouldn't be candiadtes of length 0"
+        else:
+            new_row = merge_rows(candidates)
+            new_rows.append(new_row)
+    rows = [ row for row in table.rows if row.number not in dirty_row_numbers ]
+    rows += new_rows
+    rows = sorted(rows, key = lambda a: a.number)
+    table.rows = rows
+                    
+        
+        
+    
+def row_has_money(row):
+    """
+    returns boolean whether a row has money in one of it's cells or not
+    """
+    pp = ParsingPrimitives()
+    #print len( row.cells)
+    return reduce (lambda a, b: a or b, [pp.is_money_cell(cell.clean_text) for cell in row.cells] )
+            
     
         
 def parse_table_structure(table):
@@ -350,6 +457,8 @@ def parse_table_structure(table):
     parses the structure of a table into equal number of columns
     """
     find_table_rows(table)
+    if len(table.rows) == 0:
+        return
     #for r in table.rows:
     #    find_row_cells(row)
     #applying multi line table heuristic
@@ -357,14 +466,17 @@ def parse_table_structure(table):
     max_line_length = max(map(lambda a: len(a.raw_text) ,table.rows))
     for row in table.rows:
         padded_str = row.raw_text[:-1] + ' '*(max_line_length-len(row.raw_text)) + '\n'
-        empty_chars = set( [i for i in range(len(padded_str)) if padded_str[i] ==' '])
+        empty_chars = set( [i for i in range(len(padded_str)) if padded_str[i] in [' ', '-'] ])
         heat_map.append(empty_chars)
     intersections = reduce (lambda a, b : a.intersection(b), heat_map)
     indices = sorted(list(intersections) )
     boundaries = [('a',0),] # just for sanity check, we know it's char
     i = 1
-    begin_index = indices[0]
-    prev_index = indices[0]
+    if len(indices) == 0:
+        print "No columns could be found, then everything is one cell"
+    else:
+        begin_index = indices[0]
+        prev_index = indices[0]
     while i < len(indices):
         if indices[i] - prev_index == 1:
             prev_index = indices[i]
@@ -373,16 +485,20 @@ def parse_table_structure(table):
             begin_index = indices[i]
             prev_index = indices[i]
         i+=1
-    boundaries.append((begin_index, prev_index))
+    if len(indices) > 0:
+        boundaries.append((begin_index, prev_index))
     boundaries.append((-1,'a'))
     for row in table.rows:
-        for i  in range(len(boundaries)-1):
+        #print row.raw_text
+        for i in range(len(boundaries)-1):
+            #print i
             cell = TableCell()
             cell.raw_text = row.raw_text[boundaries[i][1]:boundaries[i+1][0]]
-            cell.clean_text = cell.raw_text.strip().rstrip('.')
+            cell.clean_text = cell.raw_text.strip().rstrip('.').strip('-')
             cell.offset = row.raw_text.find(cell.raw_text, boundaries[i][1])
             cell.length = len(cell.raw_text)
             row.cells.append(cell)
+        #print "# cells in row is %d" %(len(row.cells))
 
 def compute_table_entropy(table):
     e = Entropy()
@@ -420,6 +536,13 @@ def find_table_rows(table):
     re_dashes = re.compile(r'^-{2,}')
     re_ignore = re.compile(r'^[\.=-]+')
     re_spaces = re.compile(r'[ ]{2,}')
+
+    dots_re = re.compile(r"\.\.\.")
+    digit_re = re.compile(r"\d+")
+    dash_re = re.compile(r"---")
+    spaces_re = re.compile(r'[\S]+[ ]{2,}')
+
+
     offset = 0
     row_number = -1
     max_dashes = get_max_dash_lines_count(table.body)
@@ -438,8 +561,9 @@ def find_table_rows(table):
             continue
         if re_ignore.search(line.strip()):
             continue
-        if not re_spaces.search(line):
-            continue
+        #if not re_spaces.search(line):
+        #    continue
+        #if (dots_re.search(line) and digit_re.search(line)) or (spaces_re.search(line) and digit_re.search(line)) or dash_re.search(line) or line.startswith(' '):
         table.rows.append(row)
         
 

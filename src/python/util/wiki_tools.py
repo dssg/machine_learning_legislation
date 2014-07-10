@@ -13,7 +13,7 @@ db = MySQLdb.connect(host="sunlight.c5faqozfo86k.us-west-2.rds.amazonaws.com",us
 def get_category_hierarchy(page_name, depth=1):
     """
     given a Wikipedia page name, return a list of its categories
-    at the given depth
+    up to the given depth
     """
     results = []
     results.append(get_categories(page_name))
