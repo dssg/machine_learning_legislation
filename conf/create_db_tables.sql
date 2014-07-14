@@ -69,3 +69,10 @@ id serial primary key,
 organization_entity_id integer not null,
 allocation_entity_id integer not null
 );
+
+create table entity_wikipedia_page
+(
+id serial primary key,
+entity_id int,
+wikipedia_page varchar(512)
+);

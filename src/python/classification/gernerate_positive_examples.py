@@ -22,12 +22,14 @@ def get_positive_eamples(year, outfile):
 	for entity in entities:
 		pages = wiki_tools.get_wiki_page_title_google_cse(entity['entity_inferred_name'])
 		if len(pages)>1:
-		    #hierarchy = wiki_tools.get_category_hierarchy(pages[0], 1)
 		    f.write( "%d\t%s\n"%(entity["matched_entity_id"], pages[0]))
-		    #print "entity:" + entity['entity_inferred_name']
-		    #print "wikipedia page: "+ pages[0]
 	f.close()
-		 		
+
+
+
+
+def get_negative_examples(year, outfile):
+    pass
 
 def get_earmark_entities(year):
     """
@@ -45,6 +47,34 @@ def get_earmark_entities(year):
 
 
 
+def get_negative_examples_from_db( congress = 111, count=10000 ):
+    """
+    generates negative examples, randomly, for a given year
+    """
+    conn = psycopg2.connect(CONN_STRING)
+    try:
+        cmd = """
+        select mid, entity_inferred_name, random() as r
+        from
+        (select e.entity_inferred_name, max(e.id) as mid
+        from entities as e 
+        join documents on e.document_id = documents.id 
+        join congress_meta_document as cmd on documents.congress_meta_document = cmd.id 
+        left join earmark_documents as ed on ed.matched_entity_id = e.id 
+        where e.source = 'table' 
+            and cmd.congress = %s 
+            and ed.matched_entity_id is null group by e.entity_inferred_name) 
+        order by r limit %s
+        """
+        cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        cur.execute(cmd, (congress, count))
+        records = cur.fetchall()
+        conn.close()
+        return records
+    except Exception as ex:
+        logging.exception("failed to get negative examples")
+    finally:
+        conn.close()
 
 
 

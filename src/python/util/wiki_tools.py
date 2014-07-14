@@ -17,6 +17,7 @@ def get_category_hierarchy(page_name, depth=1):
     given a Wikipedia page name, return a list of its categories
     up to the given depth
     """
+    page_name = urllib.unquote(urllib.unquote(page_name))
     results = []
     results.append(get_categories(page_name))
     for i in range(1,depth):
