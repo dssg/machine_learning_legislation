@@ -40,8 +40,8 @@ def get_categories(page_name, is_category=False):
         namespace = 14
     cur.execute("""SELECT cl_to FROM categorylinks cl
                 JOIN page p ON cl.cl_from = p.page_id
-                WHERE p.page_title="%s" AND page_namespace=%s;
-            """ % (page_name, namespace))
+                WHERE p.page_title=%s AND page_namespace=%s;
+            """ , (page_name, namespace) )
     categories = [result[0] for result in cur.fetchall()]
     return categories
 
