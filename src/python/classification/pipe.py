@@ -13,7 +13,7 @@ import numpy as np
 import scipy
 
 class Pipe:
-    def __init__(self, feature_generators, instances=[]):
+    def __init__(self, feature_generators=[], instances=[]):
         """
         accepts a list of instances of abstract_feature_generator
         """
@@ -31,19 +31,28 @@ class Pipe:
         for i in self.instances:
             self.push_single(i)
         
-    def instances_to_scipy_sparse(self):
+    def instances_to_scipy_sparse(self, ignore_groups=[]):
+        """
+        ingore_groups: list containing generator names to ignore their features
+        """
         feature_space = {}
         index = 0
         for i in self.instances:
-            for f in i.features:
-                if not feature_space.has_key(f.name):
-                    feature_space[f.name] = index
-                    index +=1
+            for f_group, features in i.feature_groups.iteritems():
+                if f_group in ignore_groups:
+                    continue
+                for f in features:
+                    if not feature_space.has_key(f.name):
+                        feature_space[f.name] = index
+                        index +=1
         X = np.zeros( (len(self.instances), len(feature_space)) )
         Y = []
         for i in range(len(self.instances)):
-            for f in self.instances[i].features:
-                X[i, feature_space[f.name]] = f.value
+            for f_group, features in self.instances[i].feature_groups.iteritems():
+                if f_group in ignore_groups:
+                    continue
+                for f in features:
+                    X[i, feature_space[f.name]] = f.value
             Y.append(self.instances[i].target_class)
         return scipy.sparse.coo_matrix(X), np.array(Y), feature_space            
             
