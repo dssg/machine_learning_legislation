@@ -12,6 +12,7 @@ import numpy as np
 from sklearn import svm
 from sklearn import cross_validation
 from sklearn.cross_validation import StratifiedKFold
+import scipy
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -128,28 +129,36 @@ def encode_instances(positive_entities, negative_entities, depth=3, distinguish_
             f_vector.append(feature_space[f])
         instances.append( (entities[i], f_vector))
     X = np.zeros( (entity_count, len(feature_space)) )
+    #X = np.sparse.lil_matrix((entity_count, len(feature_space)))
     Y = []
     for i in range(len(instances)):
         for j in instances[i][1]:
             X[i, j] = 1
         Y.append( instances[i][0] in positive_entities)
     logging.info("%d instances were mapped to space with %d dimensions" %(len(entities), len(feature_space)))
-    return X, np.array(Y), feature_space
+    return scipy.sparse.coo_matrix(X), np.array(Y), feature_space
 
 def convert_to_svmlight_format(X, Y, entities, path):
     """
     converts x and y into svmlight representaiton and write's it to path
     """
     f = open(path,'w')
-    for i in range(Y.shape[0]):
+    previous_row = -1
+    values =  zip(X.row, X.col, X.data)
+    rows = {}
+    for i, j, v in values:
+        if not rows.has_key(i):
+            rows[i] = []
+        rows[i].append((i,j,v))
+    
+    for i, list_values in rows.iteritems():
         if Y[i]:
             label = 1
         else:
             label = -1
         f.write("%d " %(label))
-        for j in range(X.shape[1]):
-            if X[i, j] > 0:
-                f.write("%d:%d " %(j+1, X[i, j]))
+        for t in list_values:
+            f.write("%d:%d " %(t[1]+1, t[2]))
         f.write("#%d\n" %(entities[i]))
     f.close()
         
@@ -170,7 +179,7 @@ def main():
     subparsers = parser.add_subparsers(dest='subparser_name' ,help='sub-command help')
     
     parser_cv = subparsers.add_parser('cv', help='perform cross validation')
-    parser_cv.add_argument('--folds', required=True, help='number of folds')
+    parser_cv.add_argument('--folds', type=int, required=True, help='number of folds')
     
     parser_cv = subparsers.add_parser('transform', help='transform to svmlight format')
     parser_cv.add_argument('--outfile', required=True, help='path to output file')
@@ -178,13 +187,13 @@ def main():
     parser.add_argument('--positivefile', required=True, help='file containing entities identified as earmarks')
     parser.add_argument('--negativefile',  required=True, help='file containing negative example entities')
     parser.add_argument('--depth', type=int, default = 3,  help='wikipedia category level depth')
-    parser.add_argument('--distinguish_levels', type=bool, default = True,  help='distinguish between category levels')
+    parser.add_argument('--ignore_levels', action='store_false', default=False, help='distinguish between category levels')
     
     args = parser.parse_args()
-    
+    distinguish_levels = not args.ignore_levels
     positive_entities = read_entities_file(args.positivefile)
     negative_entities = read_entities_file(args.negativefile)
-    x, y, space = encode_instances(positive_entities, negative_entities, args.depth, args.distinguish_levels)
+    x, y, space = encode_instances(positive_entities, negative_entities, args.depth, distinguish_levels)
     
     if args.subparser_name =="cv":
         classify_svm_cv(x, y, args.folds)
