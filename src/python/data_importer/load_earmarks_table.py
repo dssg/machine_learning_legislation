@@ -35,6 +35,7 @@ for year in years:
     d.columns = [h.lower().replace(" ", "_") for h in d.columns]    
     if year == '2005':
         d['earmark_id'] = range(d.shape[0])
+        d['short_description'] = d['earmark_short_description']
     ds.append(d)
 
 d = pd.concat(ds)
@@ -69,12 +70,20 @@ ear.columns =  new_index
 
 # there is an entry per sponsor, just keep one of them
 def get_recipient(df):
+    most_complete_idx = df.index[0]
+    most_complete_num = 0
+
     for index, row in df.iterrows():
-        if row["recipient"] is not np.NaN:
-            return df.ix[index]
-    print "not found"
+        complete_num = row.count()
+        if complete_num > most_complete_num:
+            most_complete_idx = index
+            most_complete_num = complete_num
+
+
+    if row["recipient"] is np.NaN: 
+        print "recipient not found"
     
-    return df.ix[df.index[0]]
+    return df.ix[most_complete_idx]
     
 
 ear = ear.groupby('earmark_id').apply(get_recipient)
