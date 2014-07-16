@@ -12,7 +12,6 @@ import scipy
 import psycopg2
 from classification.feature import Feature
 
-logging.basicConfig(level=logging.DEBUG)
 
 class wikipedia_categories_feature_generator:
     def __init__(self, **kwargs):

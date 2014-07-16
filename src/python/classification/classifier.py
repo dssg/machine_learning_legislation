@@ -10,6 +10,7 @@ import psycopg2
 import logging
 import numpy as np
 from sklearn import svm
+from sklearn.ensemble import RandomForestClassifier
 from sklearn import cross_validation
 from sklearn.cross_validation import StratifiedKFold
 import scipy
@@ -18,7 +19,7 @@ from feature_generators import wikipedia_categories_feature_generator
 from instance import Instance
 from pipe import Pipe
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 
 CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
 
@@ -176,10 +177,12 @@ def classify_svm_cv(X, Y, folds=2):
     C = 1.0
     #X_train, X_test, y_train, y_test = cross_validation.train_test_split(X, Y, test_size=0.4, random_state=0)
     clf = svm.SVC(kernel='linear', C=C)
+    #clf = sklearn.ensemble.RandomForestClassifier()
     #s = clf.score(X_test, y_test)
     logging.info("Starting cross validation")
     skf = cross_validation.StratifiedKFold(Y, n_folds=folds)
     scores = cross_validation.cross_val_score(clf, X, Y, cv=skf, n_jobs=3)
+    logging.info("Cross validation completed!")
     print scores
     print("Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
     
@@ -202,14 +205,14 @@ def main():
     distinguish_levels = not args.ignore_levels
     positive_entities = read_entities_file(args.positivefile)
     negative_entities = read_entities_file(args.negativefile)
-    
+    logging.info("Pulling entities from database")
     positive_instance = get_instances_from_entities(get_entity_objects(positive_entities), 1 )
     negative_instance = get_instances_from_entities(get_entity_objects(negative_entities), 0 )
     instances = positive_instance + negative_instance
     
-    logging.debug("Creating pipe")
+    logging.info("Creating pipe")
     pipe = Pipe([wikipedia_categories_feature_generator.wikipedia_categories_feature_generator(),], instances)
-    logging.debug("Pushing into pipe")
+    logging.info("Pushing into pipe")
     pipe.push_all()
     x,y,space = pipe.instances_to_scipy_sparse();
     

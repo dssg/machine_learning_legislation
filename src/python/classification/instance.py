@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.realpath(os.path.abspath(os.path.join(os.path.split(i
 class Instance:
     def __init__(self , entity = None, target_class = 0):
         self.target_class = target_class
-        self.features = []
+        self.features = set()
         self.attributes = {}
         if entity:
             self.fill_attributes_from_entity(entity)
