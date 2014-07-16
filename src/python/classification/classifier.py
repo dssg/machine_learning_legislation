@@ -13,6 +13,10 @@ from sklearn import svm
 from sklearn import cross_validation
 from sklearn.cross_validation import StratifiedKFold
 import scipy
+from dao.Entity import Entity
+from feature_generators import wikipedia_categories_feature_generator
+from instance import Instance
+from pipe import Pipe
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -49,7 +53,12 @@ def read_entities_file(path):
     """
     with open(path) as f:
         return [int(line.strip()) for line in f.readlines() if len(line) > 0]
-
+        
+def get_entity_objects(entities):
+    return [Entity(eid) for eid in entities]
+    
+def get_instances_from_entities(entities, target_class):
+    return [Instance(entity, target_class) for entity in entities]
 
 def get_entity_features(entity_id, depth=3, distinguish_levels=True):
     """
@@ -193,7 +202,18 @@ def main():
     distinguish_levels = not args.ignore_levels
     positive_entities = read_entities_file(args.positivefile)
     negative_entities = read_entities_file(args.negativefile)
-    x, y, space = encode_instances(positive_entities, negative_entities, args.depth, distinguish_levels)
+    
+    positive_instance = get_instances_from_entities(get_entity_objects(positive_entities), 1 )
+    negative_instance = get_instances_from_entities(get_entity_objects(negative_entities), 0 )
+    instances = positive_instance + negative_instance
+    
+    logging.debug("Creating pipe")
+    pipe = Pipe([wikipedia_categories_feature_generator.wikipedia_categories_feature_generator(),], instances)
+    logging.debug("Pushing into pipe")
+    pipe.push_all()
+    x,y,space = pipe.instances_to_scipy_sparse();
+    
+    #x, y, space = encode_instances(positive_entities, negative_entities, args.depth, distinguish_levels)
     
     if args.subparser_name =="cv":
         classify_svm_cv(x, y, args.folds)
