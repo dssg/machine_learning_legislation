@@ -18,10 +18,10 @@ def insert_all(directory, conn):
     # Walk the tree.
     for root, directories, files in os.walk(directory):
         for filename in files:
-            if "xml" not in filename:
+            if filename == "document.txt" or "." not in filename:
+
                 # Join the two strings in order to form the full filepath.
                 filepath = os.path.join(root, filename)
-                print filepath
                 get_entities(filepath, conn)
 
 
@@ -34,6 +34,7 @@ def get_entities(path, conn):
             path_util = path_tools.BillPathUtils(path  = path)
 
         docid = path_util.get_db_document_id()
+        print path, docid
 
 
         fields = ["entity_text", "entity_type", "entity_offset", "entity_length", "entity_inferred_name", "source", "document_id"]
@@ -71,15 +72,19 @@ def get_entities(path, conn):
 
 years = [ "111", "110","109", "108"] 
 
-base="/mnt/data/sunlight/congress_reports/"
-
-
+reports_base="/mnt/data/sunlight/congress_reports/"
+bills2008 = "/mnt/data/sunlight/bills/110/bills/hr/hr2764/text-versions/"
+bills2009 = "/mnt/data/sunlight/bills/111/bills/hr/hr1105/text-versions/"
 
 
 CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
 conn = psycopg2.connect(CONN_STRING)
+
+insert_all(bills2008, conn);
+insert_all(bills2009, conn);
+
 for year in years:
-    insert_all(base+year+"/", conn);
+    insert_all(reports_base+year+"/", conn);
 conn.close()
 
 
