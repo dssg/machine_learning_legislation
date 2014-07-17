@@ -53,11 +53,8 @@ def do_grid_search(X, Y, folds = 5):
     print "\n"
 
 
-
-
-    
     print("Best parameters set found on development set:")
-    best_parameters, score, _ = max(gs_clf.grid_scores_, key=lambda x: x[1])
+    best_parameters, score, _ = max(clf.grid_scores_, key=lambda x: x[1])
     print best_parameters
 
     
