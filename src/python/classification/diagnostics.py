@@ -20,12 +20,16 @@ import marshal
 from sklearn import svm, grid_search
 import classifier
 from sklearn.cross_validation import StratifiedShuffleSplit
+from scipy.sparse import *
+from sklearn.metrics import *
+from pprint import pprint
+
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 
 
 
-def classify_svm_cv(X, Y, folds=2):
+def do_cv(X, Y, folds=2):
     C = 1.0
     clf = svm.SVC(kernel='linear', C=C)
     #clf = sklearn.ensemble.RandomForestClassifier()
@@ -37,41 +41,97 @@ def classify_svm_cv(X, Y, folds=2):
     print("Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
 
 
-def do_grid_search(X, Y, folds = 5):
+def do_grid_search(instances, X, y, folds = 5):
 
-    param_grid = {'C': [0.1, 1, 10, 100, 1000], 'kernel': ['linear']}
-    svr = svm.SVC()
-    strat_cv = cross_validation.StratifiedKFold(Y, n_folds=folds)
-    clf = grid_search.GridSearchCV(cv  = strat_cv, estimator = svr, param_grid  =param_grid, scoring = 'f1')
-    clf.fit(X, Y)
+		d = split_data_stratified(X,y)
+		param_grid = {'C': [0.1, 1, 10, 100, 1000, 10000], 'kernel': ['linear']}
+		svr = svm.SVC()
+		strat_cv = cross_validation.StratifiedKFold(d['y_train'], n_folds=folds)
+		clf = grid_search.GridSearchCV(cv  = strat_cv, estimator = svr, param_grid  =param_grid, scoring = 'f1')
+		clf.fit(d['X_train'], d['y_train'])
 
-    print("Grid scores on development set:")
-    for params, mean_score, scores in clf.grid_scores_:
-        print("%0.3f (+/-%0.03f) for %r"
-              % (mean_score, scores.std() / 2, params))
+		print("Best parameters set found on development set:")
+		best_parameters, score, _ = max(clf.grid_scores_, key=lambda x: x[1])
+		print(best_parameters, score)
+		print "\n"
 
-    print "\n"
+		print("Grid scores on development set:")
+		for params, mean_score, scores in clf.grid_scores_:
+		    print("%0.3f (+/-%0.03f) for %r"
+		          % (mean_score, scores.std() / 2, params))
 
+		print("Detailed classification report:")
+		print("The model is trained on the full development set.")
+		print("The scores are computed on the full evaluation set.")
+		y_true, y_pred = d['y_test'], clf.predict(d['X_test'])
+		print("Confusion Matrix on Test Data")
+		print confusion_matrix(y_true, y_pred)
+		print("F1 score on Test Data")
+		print f1_score(y_true, y_pred)
+		print(classification_report(y_true, y_pred))
 
-    print("Best parameters set found on development set:")
-    best_parameters, score, _ = max(clf.grid_scores_, key=lambda x: x[1])
-    print best_parameters
-
-    
-
-
-    print("Detailed classification report:")
-    print("The model is trained on the full development set.")
-    print("The scores are computed on the full evaluation set.")
-
-    y_true, y_pred = y_test, clf.predict(X_test)
-    print(classification_report(y_true, y_pred))
-    print()
-
-
+		do_error_analysis(y_true, y_pred, d['test_index'], instances)
 
 
+def do_error_analysis(y_true, y_pred, test_index, instances):
+	print y_true
+	print y_pred
+	print test_index
 
+	false_negatives = np.logical_and(y_true==1, y_pred==0).nonzero()[0]
+	false_positives = np.logical_and(y_true==0, y_pred==1).nonzero()[0]
+	true_negatives = np.logical_and(y_true==0, y_pred==0).nonzero()[0]
+	true_positives = np.logical_and(y_true==1, y_pred==1).nonzero()[0]
+
+
+	if false_negatives.size > 0 :
+		print "False Negatives:"
+		fn_entities = [instances[test_index[i]].attributes['entity_inferred_name'] for i in np.nditer(false_negatives)]
+		print len(fn_entities)
+		pprint(fn_entities)
+
+	print "\n"*5
+
+	if false_positives.size >0:
+		fp_entities = [instances[test_index[i]].attributes['entity_inferred_name'] for i in np.nditer(false_positives)]
+		print "False Posiitves:"
+		print len(fp_entities)
+		pprint(fp_entities)
+
+	print "\n"*5
+
+	if true_negatives.size >0:
+		print "True Negatives:"
+		tn_entities = [instances[test_index[i]].attributes['entity_inferred_name'] for i in np.nditer(true_negatives)]
+		print len(tn_entities)
+		pprint(tn_entities)
+
+
+	print "\n"*5
+
+	if true_positives.size > 0 :
+		print "True Posiitves:"
+		tp_entities = [instances[test_index[i]].attributes['entity_inferred_name'] for i in np.nditer(true_positives)]
+		print len(tp_entities)
+		pprint(tp_entities)
+
+
+
+
+
+def split_data(X, y, test_size = 0.33):
+		X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, random_state=42)
+		return {'X_train': X_train, 'X_test': X_test, 'y_train': y_train, 'y_test': y_test}
+
+
+
+def split_data_stratified(X, y, test_size = 0.33):
+		sss = StratifiedShuffleSplit(y, 1, test_size=0.5, random_state=0)
+		X = csr_matrix(X)
+		for train_index, test_index in sss:
+				X_train, X_test = X[train_index], X[test_index]
+				y_train, y_test = y[train_index], y[test_index]
+				return {'X_train': X_train, 'X_test': X_test, 'y_train': y_train, 'y_test': y_test, 'test_index': test_index}
 
 def serialize_instances(instances, outfile):
     pickle.dump(instances, open(outfile,'wb'))
@@ -102,20 +162,19 @@ def main():
     
     if args.subparser_name =="cv":
         logging.info("Start deserializing")
-        #pipe = Pipe( instances= marshal.load(open(args.file, 'rb')))
+        pipe = Pipe( instances= pickle.load(open(args.file, 'rb')))
         logging.info("Start loading X, Y")
-        #x,y,space = pipe.instances_to_scipy_sparse() 
-        (x,y) = pickle.load(open(args.file, 'rb'))
-        classify_svm_cv(x, y, args.folds)
+        X,y,space = pipe.instances_to_scipy_sparse() 
+        do_cv(X, y, args.folds)
 
 
     elif args.subparser_name =="grid":
         logging.info("Start deserializing")
-        #pipe = Pipe( instances= marshal.load(open(args.file, 'rb')))
+        instances = pickle.load(open(args.file, 'rb'))
+        pipe = Pipe( instances=instances)
         logging.info("Start loading X, Y")
-        #x,y,space = pipe.instances_to_scipy_sparse() 
-        (x,y) = pickle.load(open(args.file, 'rb'))
-        do_grid_search(x, y, args.folds)
+        X,y,space = pipe.instances_to_scipy_sparse() 
+        do_grid_search(instances, X, y, args.folds)
  
         
     elif args.subparser_name == "serialize":

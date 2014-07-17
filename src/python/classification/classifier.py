@@ -19,7 +19,6 @@ from feature_generators import wikipedia_categories_feature_generator
 from instance import Instance
 from pipe import Pipe
 import pickle
-import marshal
 from sklearn import svm, grid_search
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
@@ -82,17 +81,9 @@ def classify_svm_cv(X, Y, folds=2):
     print("Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
 
 
-def grid_search(X, Y, folds = 5):
-    param_grid = {'C': [0.1, 1, 10, 100, 1000], 'kernel': ['linear']}
-    svr = svm.SVC()
-    strat_cv = cross_validation.StratifiedKFold(Y, n_folds=folds)
-
-    clf = grid_search.GridSearchCV(cv  = strat_cv, estimator = svr, param_grid  =parameters)
-    clf.fit(X, Y)
-    print clf
 
 def serialize_instances(instances, outfile):
-    marshal.dump(instances, open(outfile,'wb'))
+    pickle.dump(instances, open(outfile,'wb'))
     
 def main():
     parser = argparse.ArgumentParser(description='build classifier')
@@ -122,26 +113,14 @@ def main():
     #distinguish_levels = not args.ignore_levels
     
     
-    
-    
-    
     #x, y, space = encode_instances(positive_entities, negative_entities, args.depth, distinguish_levels)
     
     if args.subparser_name =="cv":
         logging.info("Start deserializing")
-        pipe = Pipe( instances= marshal.load(open(args.file, 'rb')))
+        pipe = Pipe( instances= pickle.load(open(args.file, 'rb')))
         logging.info("Start creating X, Y")
         x,y,space = pipe.instances_to_scipy_sparse() 
         classify_svm_cv(x, y, args.folds)
-
-
-    elif args.subparser_name =="grid":
-        logging.info("Start deserializing")
-        pipe = Pipe( instances= marshal.load(open(args.file, 'rb')))
-        logging.info("Start creating X, Y")
-        x,y,space = pipe.instances_to_scipy_sparse() 
-        grid_search(x, y, args.folds)
- 
         
     elif args.subparser_name == "transform":
         convert_to_svmlight_format(x, y, positive_entities+negative_entities, args.outfile)
