@@ -18,7 +18,7 @@ from dao.Entity import Entity
 from feature_generators import wikipedia_categories_feature_generator
 from instance import Instance
 from pipe import Pipe
-import pickle
+import cPickle as pickle
 import marshal
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
@@ -81,7 +81,7 @@ def classify_svm_cv(X, Y, folds=2):
     print("Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
 
 def serialize_instances(instances, outfile):
-    marshal.dump(instances, open(outfile,'wb'))
+    pickle.dump(instances, open(outfile,'wb'), -1)
     
 def main():
     parser = argparse.ArgumentParser(description='build classifier')
@@ -96,7 +96,7 @@ def main():
     
     parser_pickle = subparsers.add_parser('serialize', help='pickle instances')
     parser_pickle.add_argument('--outfile', required=True, help='path to output pickled file')
-
+    parser_pickle.add_argument('--threads', type=int, default = 1, help='number of threads to run in parallel')
     parser_pickle.add_argument('--positivefile', required=True, help='file containing entities identified as earmarks')
     parser_pickle.add_argument('--negativefile',  required=True, help='file containing negative example entities')
     #parser.add_argument('--depth', type=int, default = 3,  help='wikipedia category level depth')
@@ -113,7 +113,7 @@ def main():
     
     if args.subparser_name =="cv":
         logging.info("Start deserializing")
-        pipe = Pipe( instances= marshal.load(open(args.file, 'rb')))
+        pipe = Pipe( instances= pickle.load(open(args.file, 'rb')))
         logging.info("Start creating X, Y")
         x,y,space = pipe.instances_to_scipy_sparse() 
         classify_svm_cv(x, y, args.folds)
@@ -122,6 +122,7 @@ def main():
         convert_to_svmlight_format(x, y, positive_entities+negative_entities, args.outfile)
         
     elif args.subparser_name == "serialize":
+        print "pid: ", os.getpid()
         positive_entities = read_entities_file(args.positivefile)
         negative_entities = read_entities_file(args.negativefile)
         logging.info("Pulling entities from database")
@@ -130,10 +131,12 @@ def main():
         instances = positive_instance + negative_instance
         logging.info("Creating pipe")
         pipe = Pipe([wikipedia_categories_feature_generator.wikipedia_categories_feature_generator(depth = 3,distinguish_levels=True ),], 
-        instances)
+        instances, num_processes=args.threads)
         logging.info("Pushing into pipe")
         pipe.push_all()
+        logging.info("Start Serializing")
         serialize_instances(instances, args.outfile)
+        logging.info("Done!")
         
 if __name__=="__main__":
     main()
