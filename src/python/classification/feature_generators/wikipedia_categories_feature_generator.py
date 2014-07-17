@@ -12,13 +12,13 @@ import scipy
 import psycopg2
 from classification.feature import Feature
 
-logging.basicConfig(level=logging.DEBUG)
 
 class wikipedia_categories_feature_generator:
     def __init__(self, **kwargs):
         self.name = "wikipedia_categories_feature_generator"
         self.depth = kwargs.get("depth", 3)
         self.distinguish_levels = kwargs.get("distinguish_levels", True)
+        self.force = kwargs.get("force", True)
         self.feature_prefix = "WIKI_CATEGORY_"
         self.NO_WIKI_PAGE_FEATURE = "NO_WIKIPEDIA_PAGE_WAS_FOUND"
         self.CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
@@ -49,17 +49,20 @@ class wikipedia_categories_feature_generator:
         """
         given an instance a list of categories as features
         """
+        if not self.force and instance.feature_groups.has_key(self.name):
+            return
         page_title = self.entity_id_to_wikipage(instance.attributes["id"])
+        instance.feature_groups[self.name] = []
         if page_title:
             instance.attributes["matching_wiki_page"] = page_title
             categories = wiki_tools.get_category_hierarchy(page_title, self.depth)
             if self.distinguish_levels:
                 for i in range(len(categories)):
                     level = categories[i]
-                    instance.features += [ Feature(self.feature_prefix +str(i+1)+"_"+cat, 1, self.name) for cat in level  ]  
+                    instance.feature_groups[self.name] += [ Feature(self.feature_prefix +str(i+1)+"_"+cat, 1, self.name) for cat in level  ]  
             else:
-                instance.features += [[Feature(self.feature_prefix +cat, 1, self.name) for cat in level] for level in categories ] 
+                instance.feature_groups[self.name] += [[Feature(self.feature_prefix +cat, 1, self.name) for cat in level] for level in categories ] 
         else:
-            instance.features.append(Feature( self.NO_WIKI_PAGE_FEATURE,1,self.name))
-        logging.debug( "Feature count %d for entity id: %d after %s" %(len(instance.features) ,instance.attributes["id"], self.name))
+            instance.feature_groups[self.name].append(Feature( self.NO_WIKI_PAGE_FEATURE,1,self.name))
+        logging.debug( "Feature count for entity id: %d after %s" %(instance.attributes["id"], self.name))
         

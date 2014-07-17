@@ -17,7 +17,7 @@ def import_mapping(path):
     given tab delimeted file of format earmark_id tab page_title
     it's imported to the database
     """
-    lines = [line.strip().split('\t') for line in open(path,'r').readlines() if len(line.strip()) > 1]
+    lines = [line.strip().split('\t') for line in open(path,'r').readlines() if len(line.strip().split('\t')) > 1]
     params = [(int(line[0]), line[1]) for line in lines ]
     conn = psycopg2.connect(CONN_STRING)
     try:
