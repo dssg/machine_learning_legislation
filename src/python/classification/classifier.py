@@ -19,6 +19,7 @@ from feature_generators import wikipedia_categories_feature_generator
 from instance import Instance
 from pipe import Pipe
 import pickle
+import marshal
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 
@@ -79,8 +80,8 @@ def classify_svm_cv(X, Y, folds=2):
     print scores
     print("Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
 
-def pickle_instances(instances, outfile):
-    pickle.dump(instances, open(outfile,'wb'))
+def serialize_instances(instances, outfile):
+    marshal.dump(instances, open(outfile,'wb'))
     
 def main():
     parser = argparse.ArgumentParser(description='build classifier')
@@ -93,7 +94,7 @@ def main():
     parser_transform = subparsers.add_parser('transform', help='transform to svmlight format')
     parser_transform.add_argument('--outfile', required=True, help='path to output file')
     
-    parser_pickle = subparsers.add_parser('pickle', help='pickle instances')
+    parser_pickle = subparsers.add_parser('serialize', help='pickle instances')
     parser_pickle.add_argument('--outfile', required=True, help='path to output pickled file')
 
     parser_pickle.add_argument('--positivefile', required=True, help='file containing entities identified as earmarks')
@@ -111,8 +112,8 @@ def main():
     #x, y, space = encode_instances(positive_entities, negative_entities, args.depth, distinguish_levels)
     
     if args.subparser_name =="cv":
-        logging.info("Start unpickling")
-        pipe = Pipe( instances= pickle.load(open(args.file, 'rb')))
+        logging.info("Start deserializing")
+        pipe = Pipe( instances= marshal.load(open(args.file, 'rb')))
         logging.info("Start creating X, Y")
         x,y,space = pipe.instances_to_scipy_sparse() 
         classify_svm_cv(x, y, args.folds)
@@ -120,7 +121,7 @@ def main():
     elif args.subparser_name == "transform":
         convert_to_svmlight_format(x, y, positive_entities+negative_entities, args.outfile)
         
-    elif args.subparser_name == "pickle":
+    elif args.subparser_name == "serialize":
         positive_entities = read_entities_file(args.positivefile)
         negative_entities = read_entities_file(args.negativefile)
         logging.info("Pulling entities from database")
@@ -132,7 +133,7 @@ def main():
         instances)
         logging.info("Pushing into pipe")
         pipe.push_all()
-        pickle_instances(instances, args.outfile)
+        serialize_instances(instances, args.outfile)
         
 if __name__=="__main__":
     main()
