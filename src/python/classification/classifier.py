@@ -21,7 +21,7 @@ from pipe import Pipe
 import cPickle as pickle
 import marshal
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s')
 
 CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
 
@@ -80,8 +80,28 @@ def classify_svm_cv(X, Y, folds=2):
     print scores
     print("Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
 
-def serialize_instances(instances, outfile):
-    pickle.dump(instances, open(outfile,'wb'), -1)
+def serialize_instances(instances, outfolder, chunk_size = 1000):
+    if not os.path.exists(outfolder):
+        os.mkdir(outfolder)
+    for i in range( (len(instances) / chunk_size) +1 ):
+        subset = instances[i * chunk_size : (i +1) * chunk_size ]
+        #logging.debug("serializing instance %s" %(subset[-1].__str__()))
+        logging.debug("Serializing part %d" %(i+1))
+        pickle.dump(subset, open(os.path.join(outfolder, "instances%d.pickle" %(i+1)),'wb'), -1)
+    
+def load_instances(infolder):
+    """
+    infolder: folder containing files that are pickled
+    """
+    instances = []
+    file_names = os.listdir(infolder)
+    for fname in file_names:
+        if fname.endswith('.pickle'):
+            logging.debug("Deserializing part %s" %(fname))
+            instances += pickle.load(open(os.path.join(infolder, fname), 'rb'))
+    logging.info("%d instances deserialized"%(len(instances)))
+    return instances
+            
     
 def main():
     parser = argparse.ArgumentParser(description='build classifier')
@@ -89,13 +109,13 @@ def main():
     
     parser_cv = subparsers.add_parser('cv', help='perform cross validation')
     parser_cv.add_argument('--folds', type=int, required=True, help='number of folds')
-    parser_cv.add_argument('--file',  required=True, help='file to pickled instances')
+    parser_cv.add_argument('--data_folder',  required=True, help='folder containing pickled instances')
     
     parser_transform = subparsers.add_parser('transform', help='transform to svmlight format')
     parser_transform.add_argument('--outfile', required=True, help='path to output file')
     
     parser_pickle = subparsers.add_parser('serialize', help='pickle instances')
-    parser_pickle.add_argument('--outfile', required=True, help='path to output pickled file')
+    parser_pickle.add_argument('--data_folder', required=True, help='path to output pickled files')
     parser_pickle.add_argument('--threads', type=int, default = 1, help='number of threads to run in parallel')
     parser_pickle.add_argument('--positivefile', required=True, help='file containing entities identified as earmarks')
     parser_pickle.add_argument('--negativefile',  required=True, help='file containing negative example entities')
@@ -113,7 +133,7 @@ def main():
     
     if args.subparser_name =="cv":
         logging.info("Start deserializing")
-        pipe = Pipe( instances= pickle.load(open(args.file, 'rb')))
+        pipe = Pipe( instances= load_instances(args.data_folder))
         logging.info("Start creating X, Y")
         x,y,space = pipe.instances_to_scipy_sparse() 
         classify_svm_cv(x, y, args.folds)
@@ -135,7 +155,7 @@ def main():
         logging.info("Pushing into pipe")
         pipe.push_all()
         logging.info("Start Serializing")
-        serialize_instances(instances, args.outfile)
+        serialize_instances(instances, args.data_folder)
         logging.info("Done!")
         
 if __name__=="__main__":
