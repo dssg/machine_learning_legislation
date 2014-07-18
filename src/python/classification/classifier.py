@@ -109,13 +109,6 @@ def main():
     parser = argparse.ArgumentParser(description='build classifier')
     subparsers = parser.add_subparsers(dest='subparser_name' ,help='sub-command help')
     
-    parser_cv = subparsers.add_parser('cv', help='perform cross validation')
-    parser_cv.add_argument('--folds', type=int, required=True, help='number of folds')
-    parser_cv.add_argument('--file',  required=True, help='file to pickled instances')
-
-
- 
-    parser_cv.add_argument('--data_folder',  required=True, help='folder containing pickled instances')
     
     parser_transform = subparsers.add_parser('transform', help='transform to svmlight format')
     parser_transform.add_argument('--outfile', required=True, help='path to output file')
@@ -143,14 +136,7 @@ def main():
     
     
     #x, y, space = encode_instances(positive_entities, negative_entities, args.depth, distinguish_levels)
-    
-    if args.subparser_name =="cv":
-        logging.info("Start deserializing")
-        pipe = Pipe( instances= load_instances(args.data_folder))
-        logging.info("Start creating X, Y")
-        x,y,space = pipe.instances_to_scipy_sparse() 
-        classify_svm_cv(x, y, args.folds)
-        
+   
     elif args.subparser_name == "transform":
         convert_to_svmlight_format(x, y, positive_entities+negative_entities, args.outfile)
 
