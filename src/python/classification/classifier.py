@@ -85,7 +85,7 @@ def serialize_instances(instances, outfolder, chunk_size = 1000):
         os.mkdir(outfolder)
     for i in range( (len(instances) / chunk_size) +1 ):
         subset = instances[i * chunk_size : (i +1) * chunk_size ]
-        #logging.debug("serializing instance %s" %(subset[-1].__str__()))
+        logging.debug("serializing instance %s" %(subset[-1].__str__()))
         logging.debug("Serializing part %d" %(i+1))
         pickle.dump(subset, open(os.path.join(outfolder, "instances%d.pickle" %(i+1)),'wb'), -1)
     
@@ -153,7 +153,8 @@ def main():
         pipe = Pipe([wikipedia_categories_feature_generator.wikipedia_categories_feature_generator(depth = 3,distinguish_levels=True ),], 
         instances, num_processes=args.threads)
         logging.info("Pushing into pipe")
-        pipe.push_all()
+        #pipe.push_all()
+        pipe.push_all_parallel()
         logging.info("Start Serializing")
         serialize_instances(instances, args.data_folder)
         logging.info("Done!")

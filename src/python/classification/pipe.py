@@ -11,8 +11,21 @@ import psycopg2
 import logging
 import numpy as np
 import scipy
-import multiprocessing
+import multiprocessing as mp
 
+
+def parallel_target(pipe_instance_tuple):
+    pipe = pipe_instance_tuple[0]
+    instance = pipe_instance_tuple[1]
+    new_instance = pipe(instance)
+    parallel_target.queue.put(new_instance)
+    
+def initilize_parallel(q):
+    """
+    q: queue object
+    """
+    #http://stackoverflow.com/questions/3827065/can-i-use-a-multiprocessing-queue-in-a-function-called-by-pool-imap
+    parallel_target.queue = q
 
 class Pipe:
     def __init__(self, feature_generators=[], instances=[], num_processes = 1):
@@ -30,6 +43,8 @@ class Pipe:
         for fg in self.feature_generators:
             #logging.debug("operating on instance %s" %(instance.__str__()))
             fg.operate(instance)
+        # return statement is added to support multiprocessing
+        return instance
     
     def __call__(self, instance):
         return self.push_single(instance)
@@ -39,6 +54,18 @@ class Pipe:
         #pool.map(func=self, iterable=self.instances)
         for i in self.instances:
             self.push_single(i)
+            
+    def push_all_parallel(self):
+        logging.debug("before spawning pid: %s" +str(os.getpid()))
+        out_queue = mp.Queue()
+        pool = mp.Pool(self.num_processes, initilize_parallel, [out_queue])
+        pool.map(func=parallel_target, iterable= [(self, i) for i in self.instances])
+        new_instances = []
+        for i in range(len(self.instances)):
+            new_instances.append(out_queue.get())
+        print new_instances[-1]
+        self.instances = new_instances
+        print "after set", self.instances[-1]
         
     def instances_to_scipy_sparse(self, ignore_groups=[]):
         """
@@ -54,16 +81,18 @@ class Pipe:
                     if not feature_space.has_key(f.name):
                         feature_space[f.name] = index
                         index +=1
-        X = np.zeros( (len(self.instances), len(feature_space)) )
+        logging.debug("%d instances, %d features" %(len(self.instances), len(feature_space)))
+        #X = np.zeros( (len(self.instances), len(feature_space)) )
+        X = scipy.sparse.lil_matrix((len(self.instances), len(feature_space)))
         Y = []
         for i in range(len(self.instances)):
             for f_group, features in self.instances[i].feature_groups.iteritems():
                 if f_group in ignore_groups:
                     continue
                 for f in features:
-                    X[i, feature_space[f.name]] = f.value
+                    X[i, feature_space[f.name]] =  f.value
             Y.append(self.instances[i].target_class)
-        
+        print X.shape
         return scipy.sparse.coo_matrix(X), np.array(Y), feature_space            
             
     def set_instances(self, instances):
