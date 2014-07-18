@@ -29,7 +29,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(mess
 
 
 
-def do_cv(X, Y, folds=2):
+def do_cv(X, Y, folds=5):
     C = 1.0
     clf = svm.SVC(kernel='linear', C=C)
     #clf = sklearn.ensemble.RandomForestClassifier()
@@ -44,7 +44,7 @@ def do_cv(X, Y, folds=2):
 def do_grid_search(instances, X, y, folds = 5):
 
 		d = split_data_stratified(X,y)
-		param_grid = {'C': [0.1, 1, 10, 100, 1000, 10000], 'kernel': ['linear']}
+		param_grid = {'C': [0.000001, 0.001 1, 100 , 10000], 'kernel': ['linear']}
 		svr = svm.SVC()
 		strat_cv = cross_validation.StratifiedKFold(d['y_train'], n_folds=folds)
 		clf = grid_search.GridSearchCV(cv  = strat_cv, estimator = svr, param_grid  =param_grid, scoring = 'f1')
@@ -120,13 +120,13 @@ def do_error_analysis(y_true, y_pred, test_index, instances):
 
 
 def split_data(X, y, test_size = 0.33):
-		X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, random_state=42)
+		X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
 		return {'X_train': X_train, 'X_test': X_test, 'y_train': y_train, 'y_test': y_test}
 
 
 
 def split_data_stratified(X, y, test_size = 0.33):
-		sss = StratifiedShuffleSplit(y, 1, test_size=0.5, random_state=0)
+		sss = StratifiedShuffleSplit(y, 1, test_size=test_size, random_state=0)
 		X = csr_matrix(X)
 		for train_index, test_index in sss:
 				X_train, X_test = X[train_index], X[test_index]
@@ -142,27 +142,21 @@ def main():
     
     parser_cv = subparsers.add_parser('cv', help='perform cross validation')
     parser_cv.add_argument('--folds', type=int, required=True, help='number of folds')
-    parser_cv.add_argument('--file',  required=True, help='file to pickled instances')
+    parser_cv.add_argument('--data_folder',  required=True, help='file to pickled instances')
 
 
     parser_grid = subparsers.add_parser('grid', help='perform CV grid search')
     parser_grid.add_argument('--folds', type=int, required=False, help='number of folds')
-    parser_grid.add_argument('--file',  required=True, help='file to pickled instances')
+    parser_grid.add_argument('--data_folder',  required=True, help='file to pickled instances')
     
-    parser_pickle = subparsers.add_parser('serialize', help='pickle instances')
-    parser_pickle.add_argument('--outfile', required=True, help='path to output pickled file')
-    parser_pickle.add_argument('--positivefile', required=True, help='file containing entities identified as earmarks')
-    parser_pickle.add_argument('--negativefile',  required=True, help='file containing negative example entities')
-    args = parser.parse_args()
-
-    print "parsed"
-    
+    args = parser.parse_args()    
     
     #x, y, space = encode_instances(positive_entities, negative_entities, args.depth, distinguish_levels)
     
     if args.subparser_name =="cv":
         logging.info("Start deserializing")
-        pipe = Pipe( instances= pickle.load(open(args.file, 'rb')))
+        instances = classifier.load_instances(args.data_folder)
+        pipe = Pipe( instances=instances)
         logging.info("Start loading X, Y")
         X,y,space = pipe.instances_to_scipy_sparse() 
         do_cv(X, y, args.folds)
@@ -170,28 +164,14 @@ def main():
 
     elif args.subparser_name =="grid":
         logging.info("Start deserializing")
-        instances = pickle.load(open(args.file, 'rb'))
+        instances = classifier.load_instances(args.data_folder)
         pipe = Pipe( instances=instances)
         logging.info("Start loading X, Y")
         X,y,space = pipe.instances_to_scipy_sparse() 
         do_grid_search(instances, X, y, args.folds)
  
         
-    elif args.subparser_name == "serialize":
-        positive_entities = classifier.read_entities_file(args.positivefile)
-        negative_entities = classifier.read_entities_file(args.negativefile)
-        print "read entities"
-        logging.info("Pulling entities from database")
-        positive_instance = classifier.get_instances_from_entities(classifier.get_entity_objects(positive_entities), 1 )
-        negative_instance = classifier.get_instances_from_entities(classifier.get_entity_objects(negative_entities), 0 )
-        instances = positive_instance + negative_instance
-        logging.info("Creating pipe")
-        pipe = Pipe([wikipedia_categories_feature_generator.wikipedia_categories_feature_generator(depth = 3,distinguish_levels=True ),], 
-        instances)
-        logging.info("Pushing into pipe")
-        pipe.push_all()
-        x,y,space = pipe.instances_to_scipy_sparse() 
-        serialize_instances((x,y), args.outfile)
+
 
 
 if __name__=="__main__":
