@@ -137,7 +137,7 @@ def main():
     
     #x, y, space = encode_instances(positive_entities, negative_entities, args.depth, distinguish_levels)
    
-    elif args.subparser_name == "transform":
+    if args.subparser_name == "transform":
         convert_to_svmlight_format(x, y, positive_entities+negative_entities, args.outfile)
 
 
