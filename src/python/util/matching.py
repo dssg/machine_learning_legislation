@@ -82,7 +82,7 @@ def get_earmark_docs(earmark_id):
     """
     conn = psycopg2.connect(CONN_STRING)
     columns = ["document_id"]
-    cmd = "select "+", ".join(columns)+" from earmark_documents where earmark_id = %s"
+    cmd = "select "+", ".join(columns)+" from earmark_documents where earmark_id = %s and matched_entity_id is Null"
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
     cur.execute(cmd, (earmark_id,))
     docs = cur.fetchall()

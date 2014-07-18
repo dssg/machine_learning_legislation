@@ -40,8 +40,8 @@ class Pipe:
         """
         pushes instance through the pipe of feature generators
         """
+        logging.debug("operating on instance")
         for fg in self.feature_generators:
-            #logging.debug("operating on instance %s" %(instance.__str__()))
             fg.operate(instance)
         # return statement is added to support multiprocessing
         return instance
@@ -78,8 +78,10 @@ class Pipe:
                     if not feature_space.has_key(f.name):
                         feature_space[f.name] = index
                         index +=1
+
         logging.debug("%d instances, %d features" %(len(self.instances), len(feature_space)))
         #X = np.zeros( (len(self.instances), len(feature_space)) )
+        print (len(self.instances), len(feature_space))
         X = scipy.sparse.lil_matrix((len(self.instances), len(feature_space)))
         Y = []
         for i in range(len(self.instances)):

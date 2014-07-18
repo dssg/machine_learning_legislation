@@ -15,11 +15,11 @@ from sklearn import cross_validation
 from sklearn.cross_validation import StratifiedKFold
 import scipy
 from dao.Entity import Entity
-from feature_generators import wikipedia_categories_feature_generator
+from feature_generators import wikipedia_categories_feature_generator, entity_text_bag_feature_generator, simple_entity_text_feature_generator
 from instance import Instance
 from pipe import Pipe
 import cPickle as pickle
-import marshal
+
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 
@@ -80,14 +80,17 @@ def classify_svm_cv(X, Y, folds=2):
     print scores
     print("Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
 
+
 def serialize_instances(instances, outfolder, chunk_size = 1000):
     if not os.path.exists(outfolder):
         os.mkdir(outfolder)
     for i in range( (len(instances) / chunk_size) +1 ):
         subset = instances[i * chunk_size : (i +1) * chunk_size ]
-        logging.debug("Serializing part %d" %(i+1))
-        pickle.dump(subset, open(os.path.join(outfolder, "instances%d.pickle" %(i+1)),'wb'), -1)
-    
+        if len(subset)>0:
+            logging.debug("Serializing part %d" %(i+1))
+            pickle.dump(subset, open(os.path.join(outfolder, "instances%d.pickle" %(i+1)),'wb'), -1)
+        
+
 def load_instances(infolder):
     """
     infolder: folder containing files that are pickled
@@ -106,18 +109,25 @@ def main():
     parser = argparse.ArgumentParser(description='build classifier')
     subparsers = parser.add_subparsers(dest='subparser_name' ,help='sub-command help')
     
-    parser_cv = subparsers.add_parser('cv', help='perform cross validation')
-    parser_cv.add_argument('--folds', type=int, required=True, help='number of folds')
-    parser_cv.add_argument('--data_folder',  required=True, help='folder containing pickled instances')
     
     parser_transform = subparsers.add_parser('transform', help='transform to svmlight format')
     parser_transform.add_argument('--outfile', required=True, help='path to output file')
     
-    parser_pickle = subparsers.add_parser('serialize', help='pickle instances')
-    parser_pickle.add_argument('--data_folder', required=True, help='path to output pickled files')
-    parser_pickle.add_argument('--threads', type=int, default = 1, help='number of threads to run in parallel')
-    parser_pickle.add_argument('--positivefile', required=True, help='file containing entities identified as earmarks')
-    parser_pickle.add_argument('--negativefile',  required=True, help='file containing negative example entities')
+    parser_serialize = subparsers.add_parser('serialize', help='pickle instances')
+    parser_serialize.add_argument('--data_folder', required=True, help='path to output pickled files')
+    parser_serialize.add_argument('--threads', type=int, default = 1, help='number of threads to run in parallel')
+    parser_serialize.add_argument('--positivefile', required=True, help='file containing entities identified as earmarks')
+    parser_serialize.add_argument('--negativefile',  required=True, help='file containing negative example entities')
+
+
+    parser_add = subparsers.add_parser('add', help='add to pickled instances')
+    parser_add.add_argument('--data_folder', required=True, help='path to output pickled files')
+    parser_add.add_argument('--threads', type=int, default = 1, help='number of threads to run in parallel')
+
+
+
+
+
     #parser.add_argument('--depth', type=int, default = 3,  help='wikipedia category level depth')
     #parser.add_argument('--ignore_levels', action='store_false', default=False, help='distinguish between category levels')
     
@@ -125,20 +135,12 @@ def main():
     #distinguish_levels = not args.ignore_levels
     
     
-    
-    
-    
     #x, y, space = encode_instances(positive_entities, negative_entities, args.depth, distinguish_levels)
-    
-    if args.subparser_name =="cv":
-        logging.info("Start deserializing")
-        pipe = Pipe( instances= load_instances(args.data_folder))
-        logging.info("Start creating X, Y")
-        x,y,space = pipe.instances_to_scipy_sparse() 
-        classify_svm_cv(x, y, args.folds)
-        
+   
     elif args.subparser_name == "transform":
         convert_to_svmlight_format(x, y, positive_entities+negative_entities, args.outfile)
+
+
         
     elif args.subparser_name == "serialize":
         logging.debug("pid: " + str(os.getpid()))
@@ -148,12 +150,39 @@ def main():
         positive_instance = get_instances_from_entities(get_entity_objects(positive_entities), 1 )
         negative_instance = get_instances_from_entities(get_entity_objects(negative_entities), 0 )
         instances = positive_instance + negative_instance
+
+
         logging.info("Creating pipe")
-        pipe = Pipe([wikipedia_categories_feature_generator.wikipedia_categories_feature_generator(depth = 3,distinguish_levels=False ),], 
-        instances, num_processes=args.threads)
+
+
+        feature_generators = [
+        wikipedia_categories_feature_generator.wikipedia_categories_feature_generator(depth = 2, distinguish_levels=False, force=True ),
+        entity_text_bag_feature_generator.entity_text_bag_feature_generator(force=True),
+        simple_entity_text_feature_generator.simple_entity_text_feature_generator(force=True)
+        ]
+
+        pipe = Pipe(feature_generators, instances, num_processes=args.threads)
+
+
         logging.info("Pushing into pipe")
-        #pipe.push_all()
-        pipe.push_all_parallel()
+        pipe.push_all()
+        #pipe.push_all_parallel()
+        logging.info("Start Serializing")
+        serialize_instances(instances, args.data_folder)
+        logging.info("Done!")
+
+
+    elif args.subparser_name == "add":
+        instances = load_instances(args.data_folder)
+        logging.info("Creating pipe")
+        feature_generators = [
+        wikipedia_categories_feature_generator.wikipedia_categories_feature_generator(depth = 2, distinguish_levels=False, force=False ),
+        entity_text_bag_feature_generator.entity_text_bag_feature_generator(force=False),
+        simple_entity_text_feature_generator.simple_entity_text_feature_generator(force=True)
+        ]
+        pipe = Pipe(feature_generators, instances, num_processes=args.threads)
+        logging.info("Pushing into pipe")
+        pipe.push_all()
         logging.info("Start Serializing")
         serialize_instances(pipe.instances, args.data_folder)
         logging.info("Done!")

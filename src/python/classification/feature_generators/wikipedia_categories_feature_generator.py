@@ -56,6 +56,8 @@ class wikipedia_categories_feature_generator:
         if page_title:
             instance.attributes["matching_wiki_page"] = page_title
             categories = wiki_tools.get_category_hierarchy(page_title, self.depth)
+
+
             if self.distinguish_levels:
                 for i in range(len(categories)):
                     level = categories[i]
