@@ -56,16 +56,13 @@ class Pipe:
             self.push_single(i)
             
     def push_all_parallel(self):
-        logging.debug("before spawning pid: %s" +str(os.getpid()))
         out_queue = mp.Queue()
         pool = mp.Pool(self.num_processes, initilize_parallel, [out_queue])
         pool.map(func=parallel_target, iterable= [(self, i) for i in self.instances])
         new_instances = []
         for i in range(len(self.instances)):
             new_instances.append(out_queue.get())
-        print new_instances[-1]
         self.instances = new_instances
-        print "after set", self.instances[-1]
         
     def instances_to_scipy_sparse(self, ignore_groups=[]):
         """
@@ -92,7 +89,7 @@ class Pipe:
                 for f in features:
                     X[i, feature_space[f.name]] =  f.value
             Y.append(self.instances[i].target_class)
-        print X.shape
+        logging.info("%d Instances loaded with %d features" %(X.shape[0], X.shape[1]))
         return scipy.sparse.coo_matrix(X), np.array(Y), feature_space            
             
     def set_instances(self, instances):

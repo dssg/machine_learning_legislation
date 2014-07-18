@@ -21,7 +21,7 @@ from pipe import Pipe
 import cPickle as pickle
 import marshal
 
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 
 CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
 
@@ -37,10 +37,10 @@ def read_entities_file(path):
         return [int(line.strip()) for line in f.readlines() if len(line) > 0]
         
 def get_entity_objects(entities):
-    return [Entity(eid) for eid in entities]
+    return map(lambda eid: Entity(eid) , entities)
     
 def get_instances_from_entities(entities, target_class):
-    return [Instance(entity, target_class) for entity in entities]
+    return map( lambda entity: Instance(entity, target_class), entities )
 
 def convert_to_svmlight_format(X, Y, entities, path):
     """
@@ -85,7 +85,6 @@ def serialize_instances(instances, outfolder, chunk_size = 1000):
         os.mkdir(outfolder)
     for i in range( (len(instances) / chunk_size) +1 ):
         subset = instances[i * chunk_size : (i +1) * chunk_size ]
-        logging.debug("serializing instance %s" %(subset[-1].__str__()))
         logging.debug("Serializing part %d" %(i+1))
         pickle.dump(subset, open(os.path.join(outfolder, "instances%d.pickle" %(i+1)),'wb'), -1)
     
@@ -142,7 +141,7 @@ def main():
         convert_to_svmlight_format(x, y, positive_entities+negative_entities, args.outfile)
         
     elif args.subparser_name == "serialize":
-        print "pid: ", os.getpid()
+        logging.debug("pid: " + str(os.getpid()))
         positive_entities = read_entities_file(args.positivefile)
         negative_entities = read_entities_file(args.negativefile)
         logging.info("Pulling entities from database")
@@ -150,13 +149,13 @@ def main():
         negative_instance = get_instances_from_entities(get_entity_objects(negative_entities), 0 )
         instances = positive_instance + negative_instance
         logging.info("Creating pipe")
-        pipe = Pipe([wikipedia_categories_feature_generator.wikipedia_categories_feature_generator(depth = 3,distinguish_levels=True ),], 
+        pipe = Pipe([wikipedia_categories_feature_generator.wikipedia_categories_feature_generator(depth = 3,distinguish_levels=False ),], 
         instances, num_processes=args.threads)
         logging.info("Pushing into pipe")
         #pipe.push_all()
         pipe.push_all_parallel()
         logging.info("Start Serializing")
-        serialize_instances(instances, args.data_folder)
+        serialize_instances(pipe.instances, args.data_folder)
         logging.info("Done!")
         
 if __name__=="__main__":
