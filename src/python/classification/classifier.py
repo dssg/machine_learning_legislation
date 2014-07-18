@@ -18,10 +18,15 @@ from dao.Entity import Entity
 from feature_generators import wikipedia_categories_feature_generator
 from instance import Instance
 from pipe import Pipe
+<<<<<<< HEAD
 import pickle
 from sklearn import svm, grid_search
+=======
+import cPickle as pickle
+import marshal
+>>>>>>> a2345c9c0a2aca05f00e4cdf478fb6f8982a3341
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s')
 
 CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
 
@@ -81,9 +86,28 @@ def classify_svm_cv(X, Y, folds=2):
     print("Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
 
 
-
-def serialize_instances(instances, outfile):
-    pickle.dump(instances, open(outfile,'wb'))
+def serialize_instances(instances, outfolder, chunk_size = 1000):
+    if not os.path.exists(outfolder):
+        os.mkdir(outfolder)
+    for i in range( (len(instances) / chunk_size) +1 ):
+        subset = instances[i * chunk_size : (i +1) * chunk_size ]
+        #logging.debug("serializing instance %s" %(subset[-1].__str__()))
+        logging.debug("Serializing part %d" %(i+1))
+        pickle.dump(subset, open(os.path.join(outfolder, "instances%d.pickle" %(i+1)),'wb'), -1)
+    
+def load_instances(infolder):
+    """
+    infolder: folder containing files that are pickled
+    """
+    instances = []
+    file_names = os.listdir(infolder)
+    for fname in file_names:
+        if fname.endswith('.pickle'):
+            logging.debug("Deserializing part %s" %(fname))
+            instances += pickle.load(open(os.path.join(infolder, fname), 'rb'))
+    logging.info("%d instances deserialized"%(len(instances)))
+    return instances
+            
     
 def main():
     parser = argparse.ArgumentParser(description='build classifier')
@@ -94,16 +118,15 @@ def main():
     parser_cv.add_argument('--file',  required=True, help='file to pickled instances')
 
 
-    parser_grid = subparsers.add_parser('grid', help='perform CV grid search')
-    parser_grid.add_argument('--folds', type=int, required=True, help='number of folds')
-    parser_grid.add_argument('--file',  required=True, help='file to pickled instances')
+ 
+    parser_cv.add_argument('--data_folder',  required=True, help='folder containing pickled instances')
     
     parser_transform = subparsers.add_parser('transform', help='transform to svmlight format')
     parser_transform.add_argument('--outfile', required=True, help='path to output file')
     
     parser_pickle = subparsers.add_parser('serialize', help='pickle instances')
-    parser_pickle.add_argument('--outfile', required=True, help='path to output pickled file')
-
+    parser_pickle.add_argument('--data_folder', required=True, help='path to output pickled files')
+    parser_pickle.add_argument('--threads', type=int, default = 1, help='number of threads to run in parallel')
     parser_pickle.add_argument('--positivefile', required=True, help='file containing entities identified as earmarks')
     parser_pickle.add_argument('--negativefile',  required=True, help='file containing negative example entities')
     #parser.add_argument('--depth', type=int, default = 3,  help='wikipedia category level depth')
@@ -117,7 +140,11 @@ def main():
     
     if args.subparser_name =="cv":
         logging.info("Start deserializing")
+<<<<<<< HEAD
         pipe = Pipe( instances= pickle.load(open(args.file, 'rb')))
+=======
+        pipe = Pipe( instances= load_instances(args.data_folder))
+>>>>>>> a2345c9c0a2aca05f00e4cdf478fb6f8982a3341
         logging.info("Start creating X, Y")
         x,y,space = pipe.instances_to_scipy_sparse() 
         classify_svm_cv(x, y, args.folds)
@@ -126,6 +153,7 @@ def main():
         convert_to_svmlight_format(x, y, positive_entities+negative_entities, args.outfile)
         
     elif args.subparser_name == "serialize":
+        print "pid: ", os.getpid()
         positive_entities = read_entities_file(args.positivefile)
         negative_entities = read_entities_file(args.negativefile)
         logging.info("Pulling entities from database")
@@ -134,10 +162,12 @@ def main():
         instances = positive_instance + negative_instance
         logging.info("Creating pipe")
         pipe = Pipe([wikipedia_categories_feature_generator.wikipedia_categories_feature_generator(depth = 3,distinguish_levels=True ),], 
-        instances)
+        instances, num_processes=args.threads)
         logging.info("Pushing into pipe")
         pipe.push_all()
-        serialize_instances(instances, args.outfile)
+        logging.info("Start Serializing")
+        serialize_instances(instances, args.data_folder)
+        logging.info("Done!")
         
 if __name__=="__main__":
     main()

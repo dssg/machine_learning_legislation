@@ -11,23 +11,32 @@ import psycopg2
 import logging
 import numpy as np
 import scipy
+import multiprocessing
+
 
 class Pipe:
-    def __init__(self, feature_generators=[], instances=[]):
+    def __init__(self, feature_generators=[], instances=[], num_processes = 1):
         """
         accepts a list of instances of abstract_feature_generator
         """
         self.feature_generators = feature_generators
         self.instances = instances
+        self.num_processes = 1
         
     def push_single(self, instance):
         """
         pushes instance through the pipe of feature generators
         """
         for fg in self.feature_generators:
+            #logging.debug("operating on instance %s" %(instance.__str__()))
             fg.operate(instance)
+    
+    def __call__(self, instance):
+        return self.push_single(instance)
             
     def push_all(self):
+        #pool = multiprocessing.Pool(self.num_processes)
+        #pool.map(func=self, iterable=self.instances)
         for i in self.instances:
             self.push_single(i)
         
@@ -54,6 +63,7 @@ class Pipe:
                 for f in features:
                     X[i, feature_space[f.name]] = f.value
             Y.append(self.instances[i].target_class)
+        
         return scipy.sparse.coo_matrix(X), np.array(Y), feature_space            
             
     def set_instances(self, instances):
