@@ -40,8 +40,8 @@ class Pipe:
         """
         pushes instance through the pipe of feature generators
         """
+        logging.debug("operating on instance")
         for fg in self.feature_generators:
-            #logging.debug("operating on instance %s" %(instance.__str__()))
             fg.operate(instance)
         # return statement is added to support multiprocessing
         return instance

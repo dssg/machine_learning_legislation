@@ -35,16 +35,16 @@ def do_cv(X, Y, folds=5):
     #clf = sklearn.ensemble.RandomForestClassifier()
     logging.info("Starting cross validation")
     skf = cross_validation.StratifiedKFold(Y, n_folds=folds)
-    scores = cross_validation.cross_val_score(clf, X, Y, cv=skf, n_jobs=3)
+    scores = cross_validation.cross_val_score(clf, X, Y, cv=skf, n_jobs=3, scoring='f1')
     logging.info("Cross validation completed!")
     print scores
-    print("Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
+    print("F1: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
 
 
 def do_grid_search(instances, X, y, folds = 5):
 
 		d = split_data_stratified(X,y)
-		param_grid = {'C': [0.000001, 0.001 1, 100 , 10000], 'kernel': ['linear']}
+		param_grid = {'C': [0.000001, 0.001, 1, 100 , 10000], 'kernel': ['linear']}
 		svr = svm.SVC()
 		strat_cv = cross_validation.StratifiedKFold(d['y_train'], n_folds=folds)
 		clf = grid_search.GridSearchCV(cv  = strat_cv, estimator = svr, param_grid  =param_grid, scoring = 'f1')

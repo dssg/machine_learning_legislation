@@ -40,7 +40,6 @@ class entity_text_bag_feature_generator:
 
         entity_text = normalize(instance.attributes["entity_inferred_name"])
         tokens = entity_text.split(' ')
-        print tokens
         instance.feature_groups[self.name] += [Feature(self.feature_prefix +token, 1, self.name) for token in tokens ] 
         logging.debug( "Feature count %d for entity id: %d after %s" %(instance.feature_count(),instance.attributes["id"], self.name))
         

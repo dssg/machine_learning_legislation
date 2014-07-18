@@ -56,12 +56,16 @@ class wikipedia_categories_feature_generator:
         if page_title:
             instance.attributes["matching_wiki_page"] = page_title
             categories = wiki_tools.get_category_hierarchy(page_title, self.depth)
+
+
             if self.distinguish_levels:
                 for i in range(len(categories)):
                     level = categories[i]
                     instance.feature_groups[self.name] += [ Feature(self.feature_prefix +str(i+1)+"_"+cat, 1, self.name) for cat in level  ]  
             else:
-                instance.feature_groups[self.name] += [[Feature(self.feature_prefix +cat, 1, self.name) for cat in level] for level in categories ] 
+                for i in range(len(categories)):
+                    level = categories[i]
+                    instance.feature_groups[self.name] += [ Feature(self.feature_prefix +cat, 1, self.name) for cat in level  ]  
         else:
             instance.feature_groups[self.name].append(Feature( self.NO_WIKI_PAGE_FEATURE,1,self.name))
         logging.debug( "Feature count %d for entity id: %d after %s" %(instance.feature_count(),instance.attributes["id"], self.name))

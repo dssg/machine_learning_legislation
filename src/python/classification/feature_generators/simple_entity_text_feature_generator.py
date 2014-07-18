@@ -14,22 +14,30 @@ import re
 from classification.feature import Feature
 
 
+def normalize(s):
+    for p in string.punctuation:
+        s = s.replace(p, ' ')
+
+    s = re.sub(r'[ ]{2,}', " ", s)
+    return s.lower()
+
 #number of all caps
 
 def num_all_caps(s):
-    return sum(1 for c in message if c.isupper())
+    return sum(1 for c in s if c.isupper())
 
 # number of dots
-
-# length
+def num_dots(s):
+    return sum(1 for c in s if c == '.')
 
 #num_words
 
+def num_words(s):
+    return len(normalize(s).split(' '))
+
 #number of digits
-
-
-
-
+def num_digits(s):
+    return sum(1 for c in s if c.isdigit())
 
 def normalize(s):
     for p in string.punctuation:
@@ -39,11 +47,24 @@ def normalize(s):
     return s.lower()
 
 
-class entity_text_bag_feature_generator:
+
+
+feature_functions = [
+('num_all_caps', num_all_caps), 
+('num_dots', num_dots), 
+('length', len), 
+('num_words', num_words), 
+('num_digits', num_digits), 
+]
+
+    
+
+
+class simple_entity_text_feature_generator:
     def __init__(self, **kwargs):
-        self.name = "entity_text_bag_feature_generator"
+        self.name = "simple_entity_text_feature_generator"
         self.force = kwargs.get("force", True)
-        self.feature_prefix = "ENTITY_TEXT_"
+        self.feature_prefix = "ENTITY_TEXT_FEAUTURE_"
             
     
 
@@ -55,9 +76,28 @@ class entity_text_bag_feature_generator:
             return
         instance.feature_groups[self.name] = []
 
-        entity_text = normalize(instance.attributes["entity_inferred_name"])
-        tokens = entity_text.split(' ')
-        print tokens
-        instance.feature_groups[self.name] += [Feature(self.feature_prefix +token, 1, self.name) for token in tokens ] 
+        s = instance.attributes["entity_inferred_name"]
+        
+        
+        instance.feature_groups[self.name]+= [Feature(self.feature_prefix +t[0], t[1](s), self.name) for t in feature_functions]
+
+
+
         logging.debug( "Feature count %d for entity id: %d after %s" %(instance.feature_count(),instance.attributes["id"], self.name))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         

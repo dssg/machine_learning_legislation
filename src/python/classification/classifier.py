@@ -15,7 +15,7 @@ from sklearn import cross_validation
 from sklearn.cross_validation import StratifiedKFold
 import scipy
 from dao.Entity import Entity
-from feature_generators import wikipedia_categories_feature_generator, entity_text_bag_feature_generator
+from feature_generators import wikipedia_categories_feature_generator, entity_text_bag_feature_generator, simple_entity_text_feature_generator
 from instance import Instance
 from pipe import Pipe
 import cPickle as pickle
@@ -164,9 +164,20 @@ def main():
         positive_instance = get_instances_from_entities(get_entity_objects(positive_entities), 1 )
         negative_instance = get_instances_from_entities(get_entity_objects(negative_entities), 0 )
         instances = positive_instance + negative_instance
+
+
         logging.info("Creating pipe")
-        pipe = Pipe([wikipedia_categories_feature_generator.wikipedia_categories_feature_generator(depth = 3, distinguish_levels=True, force=False ),], 
-        instances, num_processes=args.threads)
+
+
+        feature_generators = [
+        wikipedia_categories_feature_generator.wikipedia_categories_feature_generator(depth = 2, distinguish_levels=False, force=True ),
+        entity_text_bag_feature_generator.entity_text_bag_feature_generator(force=True),
+        simple_entity_text_feature_generator.simple_entity_text_feature_generator(force=True)
+        ]
+
+        pipe = Pipe(feature_generators, instances, num_processes=args.threads)
+
+
         logging.info("Pushing into pipe")
         pipe.push_all()
         #pipe.push_all_parallel()
@@ -179,8 +190,9 @@ def main():
         instances = load_instances(args.data_folder)
         logging.info("Creating pipe")
         feature_generators = [
-        wikipedia_categories_feature_generator.wikipedia_categories_feature_generator(depth = 3, distinguish_levels=True, force=False ),
-        entity_text_bag_feature_generator.entity_text_bag_feature_generator(force=True),
+        wikipedia_categories_feature_generator.wikipedia_categories_feature_generator(depth = 2, distinguish_levels=False, force=False ),
+        entity_text_bag_feature_generator.entity_text_bag_feature_generator(force=False),
+        simple_entity_text_feature_generator.simple_entity_text_feature_generator(force=True)
         ]
         pipe = Pipe(feature_generators, instances, num_processes=args.threads)
         logging.info("Pushing into pipe")
