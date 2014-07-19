@@ -165,8 +165,8 @@ def main():
 
 
         logging.info("Pushing into pipe")
-        pipe.push_all()
-        #pipe.push_all_parallel()
+        #pipe.push_all()
+        pipe.push_all_parallel()
         logging.info("Start Serializing")
         serialize_instances(instances, args.data_folder)
         logging.info("Done!")
