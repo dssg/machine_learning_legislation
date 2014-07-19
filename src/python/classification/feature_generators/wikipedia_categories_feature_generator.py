@@ -63,9 +63,8 @@ class wikipedia_categories_feature_generator:
                     level = categories[i]
                     instance.feature_groups[self.name] += [ Feature(self.feature_prefix +str(i+1)+"_"+cat, 1, self.name) for cat in level  ]  
             else:
-                for i in range(len(categories)):
-                    level = categories[i]
-                    instance.feature_groups[self.name] += [ Feature(self.feature_prefix +cat, 1, self.name) for cat in level  ]  
+                for level in categories:
+                    instance.feature_groups[self.name] += [Feature(self.feature_prefix +cat, 1, self.name) for cat in level]
         else:
             instance.feature_groups[self.name].append(Feature( self.NO_WIKI_PAGE_FEATURE,1,self.name))
         logging.debug( "Feature count %d for entity id: %d after %s" %(instance.feature_count(),instance.attributes["id"], self.name))
