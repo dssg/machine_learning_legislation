@@ -143,7 +143,7 @@ def main():
     subparsers = parser.add_subparsers(dest='subparser_name' ,help='sub-command help')
     
     parser_cv = subparsers.add_parser('cv', help='perform cross validation')
-    parser_cv.add_argument('--folds', type=int, required=True, help='number of folds')
+    parser_cv.add_argument('--folds', type=int, required=False, help='number of folds')
     parser_cv.add_argument('--data_folder',  required=True, help='file to pickled instances')
 
 
