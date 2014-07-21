@@ -34,7 +34,7 @@ class Pipe:
         """
         self.feature_generators = feature_generators
         self.instances = instances
-        self.num_processes = 1
+        self.num_processes = num_processes
         
     def push_single(self, instance):
         """
@@ -56,6 +56,7 @@ class Pipe:
             self.push_single(i)
             
     def push_all_parallel(self):
+        logging.info("creating thread pool with %d threads" %(self.num_processes))
         out_queue = mp.Queue()
         pool = mp.Pool(self.num_processes, initilize_parallel, [out_queue])
         pool.map(func=parallel_target, iterable= [(self, i) for i in self.instances])
