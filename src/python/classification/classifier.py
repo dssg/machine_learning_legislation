@@ -19,6 +19,8 @@ from feature_generators import wikipedia_categories_feature_generator, entity_te
 from instance import Instance
 from pipe import Pipe
 import cPickle as pickle
+import multiprocessing as mp
+from multiprocessing import Manager
 
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
@@ -27,7 +29,8 @@ CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dss
 
 NO_WIKI_PAGE_FEATURE = "NO_WIKIPEDIA_PAGE_WAS_FOUND"
 
-
+manager = Manager()
+global_data= manager.list([])
     
 def read_entities_file(path):
     """
@@ -35,12 +38,33 @@ def read_entities_file(path):
     """
     with open(path) as f:
         return [int(line.strip()) for line in f.readlines() if len(line) > 0]
-        
-def get_entity_objects(entities):
-    return map(lambda eid: Entity(eid) , entities)
+
+
+def global_data_append_entity(eid):
+    global_data.append(Entity(eid))
     
-def get_instances_from_entities(entities, target_class):
-    return map( lambda entity: Instance(entity, target_class), entities )
+def global_data_append_instance(entity_target_class_tuple):
+    entity = entity_target_class_tuple[0]
+    target_class = entity_target_class_tuple[1]
+    global_data.append(Instance(entity, target_class))
+        
+def get_entity_objects(entities, threads = 1):
+    global global_data
+    global_data = manager.list([])
+    pool=mp.Pool(processes=threads)
+    pool.map(global_data_append_entity ,entities)
+    return global_data[:]
+    #return map(lambda eid: Entity(eid) , entities)
+    
+def get_instances_from_entities(entities, target_class, threads = 1):
+    global global_data
+    global_data= manager.list([])
+    logging.debug("Inside get instances, length of global data after initializaing %d" %(len(global_data)))
+    pool=mp.Pool(processes=threads)
+    pool.map(global_data_append_instance  ,[(entity, target_class) for entity in  entities])
+    logging.debug("Inside get instances, created %d instances with class %d" %(len(global_data), target_class))
+    return global_data[:]
+    #return map( lambda entity: Instance(entity, target_class), entities )
 
 def convert_to_svmlight_format(X, Y, entities, path):
     """
@@ -147,8 +171,8 @@ def main():
         positive_entities = read_entities_file(args.positivefile)
         negative_entities = read_entities_file(args.negativefile)
         logging.info("Pulling entities from database")
-        positive_instance = get_instances_from_entities(get_entity_objects(positive_entities), 1 )
-        negative_instance = get_instances_from_entities(get_entity_objects(negative_entities), 0 )
+        positive_instance = get_instances_from_entities(get_entity_objects(positive_entities, args.threads), 1, args.threads )
+        negative_instance = get_instances_from_entities(get_entity_objects(negative_entities, args.threads), 0, args.threads )
         instances = positive_instance + negative_instance
 
 
