@@ -53,8 +53,6 @@ def get_cities_from_csv():
 
 
 def geo_inferred_text_has_state(tokens, full, full_upper, abbr):
-    print tokens
-
     ret = 0
     for t in tokens:
         if t in full or t in abbr or t in full_upper:

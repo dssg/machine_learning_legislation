@@ -44,8 +44,8 @@ def do_cv(X, Y, folds=5):
 def do_grid_search(instances, X, y, folds = 5):
 
 		d = split_data_stratified(X,y)
-		#param_grid = {'C': [0.000001, 0.001, 1, 100 , 10000], 'kernel': ['linear']}
-		param_grid = {'C': [1,], 'kernel': ['linear']}
+		param_grid = {'C': [0.000001, 0.001, 1, 100 , 10000], 'kernel': ['linear']}
+		#param_grid = {'C': [1,], 'kernel': ['linear']}
 
 		svr = svm.SVC()
 		strat_cv = cross_validation.StratifiedKFold(d['y_train'], n_folds=folds)
