@@ -167,17 +167,15 @@ def main():
 
         
     elif args.subparser_name == "serialize":
-        logging.debug("pid: " + str(os.getpid()))
+        logging.info("pid: " + str(os.getpid()))
         positive_entities = read_entities_file(args.positivefile)
         negative_entities = read_entities_file(args.negativefile)
         logging.info("Pulling entities from database")
         positive_instance = get_instances_from_entities(get_entity_objects(positive_entities, args.threads), 1, args.threads )
         negative_instance = get_instances_from_entities(get_entity_objects(negative_entities, args.threads), 0, args.threads )
         instances = positive_instance + negative_instance
-
-
+        
         logging.info("Creating pipe")
-
 
         feature_generators = [
         wikipedia_categories_feature_generator.wikipedia_categories_feature_generator(depth = 2, distinguish_levels=False, force=True ),
@@ -188,15 +186,15 @@ def main():
 
         pipe = Pipe(feature_generators, instances, num_processes=args.threads)
 
-
         logging.info("Pushing into pipe")
         pipe.push_all_parallel()
         logging.info("Start Serializing")
-        serialize_instances(instances, args.data_folder)
+        serialize_instances(pipe.instances, args.data_folder)
         logging.info("Done!")
 
 
     elif args.subparser_name == "add":
+        logging.info("pid: " + str(os.getpid()))
         instances = load_instances(args.data_folder)
         logging.info("Creating pipe")
         feature_generators = [
@@ -207,7 +205,7 @@ def main():
         ]
         pipe = Pipe(feature_generators, instances, num_processes=args.threads)
         logging.info("Pushing into pipe")
-        pipe.push_all()
+        pipe.push_all_parallel()
         logging.info("Start Serializing")
         serialize_instances(pipe.instances, args.data_folder)
         logging.info("Done!")
