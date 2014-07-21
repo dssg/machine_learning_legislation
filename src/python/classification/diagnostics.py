@@ -35,7 +35,7 @@ def do_cv(X, Y, folds=5):
     #clf = sklearn.ensemble.RandomForestClassifier()
     logging.info("Starting cross validation")
     skf = cross_validation.StratifiedKFold(Y, n_folds=folds)
-    scores = cross_validation.cross_val_score(clf, X, Y, cv=skf, n_jobs=3, scoring='f1')
+    scores = cross_validation.cross_val_score(clf, X, Y, cv=skf, n_jobs=8, scoring='f1')
     logging.info("Cross validation completed!")
     print scores
     print("F1: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
@@ -45,9 +45,11 @@ def do_grid_search(instances, X, y, folds = 5):
 
 		d = split_data_stratified(X,y)
 		param_grid = {'C': [0.000001, 0.001, 1, 100 , 10000], 'kernel': ['linear']}
+		#param_grid = {'C': [1,], 'kernel': ['linear']}
+
 		svr = svm.SVC()
 		strat_cv = cross_validation.StratifiedKFold(d['y_train'], n_folds=folds)
-		clf = grid_search.GridSearchCV(cv  = strat_cv, estimator = svr, param_grid  =param_grid, scoring = 'f1')
+		clf = grid_search.GridSearchCV(cv  = strat_cv, estimator = svr, param_grid  =param_grid, scoring = 'f1', n_jobs=8)
 		clf.fit(d['X_train'], d['y_train'])
 
 		print("Best parameters set found on development set:")
@@ -141,7 +143,7 @@ def main():
     subparsers = parser.add_subparsers(dest='subparser_name' ,help='sub-command help')
     
     parser_cv = subparsers.add_parser('cv', help='perform cross validation')
-    parser_cv.add_argument('--folds', type=int, required=True, help='number of folds')
+    parser_cv.add_argument('--folds', type=int, required=False, help='number of folds')
     parser_cv.add_argument('--data_folder',  required=True, help='file to pickled instances')
 
 

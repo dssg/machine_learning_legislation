@@ -15,7 +15,7 @@ from sklearn import cross_validation
 from sklearn.cross_validation import StratifiedKFold
 import scipy
 from dao.Entity import Entity
-from feature_generators import wikipedia_categories_feature_generator, entity_text_bag_feature_generator, simple_entity_text_feature_generator
+from feature_generators import wikipedia_categories_feature_generator, entity_text_bag_feature_generator, simple_entity_text_feature_generator, gen_geo_features
 from instance import Instance
 from pipe import Pipe
 import cPickle as pickle
@@ -184,13 +184,13 @@ def main():
         feature_generators = [
         wikipedia_categories_feature_generator.wikipedia_categories_feature_generator(depth = 2, distinguish_levels=False, force=True ),
         entity_text_bag_feature_generator.entity_text_bag_feature_generator(force=True),
-        simple_entity_text_feature_generator.simple_entity_text_feature_generator(force=True)
+        simple_entity_text_feature_generator.simple_entity_text_feature_generator(force=True),
+        gen_geo_features.geo_feature_generator(force = True),
         ]
 
         pipe = Pipe(feature_generators, instances, num_processes=args.threads)
 
         logging.info("Pushing into pipe")
-        #pipe.push_all()
         pipe.push_all_parallel()
         logging.info("Start Serializing")
         serialize_instances(pipe.instances, args.data_folder)
@@ -204,7 +204,8 @@ def main():
         feature_generators = [
         wikipedia_categories_feature_generator.wikipedia_categories_feature_generator(depth = 2, distinguish_levels=False, force=False ),
         entity_text_bag_feature_generator.entity_text_bag_feature_generator(force=False),
-        simple_entity_text_feature_generator.simple_entity_text_feature_generator(force=True)
+        simple_entity_text_feature_generator.simple_entity_text_feature_generator(force=False),
+        gen_geo_features.geo_feature_generator(force = True),
         ]
         pipe = Pipe(feature_generators, instances, num_processes=args.threads)
         logging.info("Pushing into pipe")
