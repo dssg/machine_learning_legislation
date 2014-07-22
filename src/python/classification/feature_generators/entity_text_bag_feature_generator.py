@@ -22,11 +22,11 @@ def normalize(s):
     return s.lower()
 
 
-class entity_text_bag_feature_generator:
+class unigram_feature_generator:
     def __init__(self, **kwargs):
-        self.name = "entity_text_bag_feature_generator"
+        self.name = "unigram_feature_generator"
         self.force = kwargs.get("force", True)
-        self.feature_prefix = "ENTITY_TEXT_"
+        self.feature_prefix = "UNIGRAM_"
             
     
 
@@ -41,5 +41,28 @@ class entity_text_bag_feature_generator:
         entity_text = normalize(instance.attributes["entity_inferred_name"])
         tokens = entity_text.split(' ')
         instance.feature_groups[self.name] += [Feature(self.feature_prefix +token, 1, self.name) for token in tokens ] 
+        logging.debug( "Feature count %d for entity id: %d after %s" %(instance.feature_count(),instance.attributes["id"], self.name))
+
+
+
+class bigram_feature_generator:
+    def __init__(self, **kwargs):
+        self.name = "bigram_feature_generator"
+        self.force = kwargs.get("force", True)
+        self.feature_prefix = "BIGRAM_"
+            
+    
+
+    def operate(self, instance):
+        """
+        given an instance a list of categories as features
+        """
+        if not self.force and instance.feature_groups.has_key(self.name):
+            return
+        instance.feature_groups[self.name] = []
+
+        entity_text = normalize(instance.attributes["entity_inferred_name"])
+        tokens = entity_text.split(' ')
+        instance.feature_groups[self.name] += [Feature(self.feature_prefix +tokens[i]+"_"+tokens[i+1], 1, self.name) for i in range(len(tokens)-1) ] 
         logging.debug( "Feature count %d for entity id: %d after %s" %(instance.feature_count(),instance.attributes["id"], self.name))
         
