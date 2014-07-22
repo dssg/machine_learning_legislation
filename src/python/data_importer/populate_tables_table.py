@@ -8,14 +8,34 @@ import util.text_table_tools as ttt
 import psycopg2
 from util.path_tools import BillPathUtils, ReportPathUtils
 import codecs
+import argparse
 
 CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
 conn = psycopg2.connect(CONN_STRING)
 
 def main():
-    document_ids = get_document_ids()
-    document_paths = get_document_paths_from_ids(document_ids)
-    extract_tables(document_paths)
+    #TODO: cleanup this API
+    parser = argparse.ArgumentParser(description='')
+    parser.add_argument('--map', action="store_true", required=False)
+    parser.add_argument('--insert', action="store_true", required=False)
+    parser.add_argument('--file', required=False)
+    args = parser.parse_args()
+
+    if args.map:
+        document_ids = get_document_ids()
+        document_paths = get_document_paths_from_ids(document_ids)
+        out_file = open(args.file, "w")
+        for path in document_paths:
+            out_file.write("%s,%s\n" % path)
+
+    if args.insert:
+        in_file = open(args.file)
+        document_paths = []
+        for line in in_file:
+            line = line.replace("(", "").replace(")", "")
+            path, doc_id, is_bill = line.split(",")
+            document_paths.append((path, doc_id, is_bill))
+        extract_tables(document_paths)
 
 def get_document_ids():
     cmd = """SELECT d.id, cmd.bill
@@ -38,25 +58,23 @@ def get_document_paths_from_ids(document_ids):
         else:
             path_util = ReportPathUtils()
         path = path_util.get_path_from_doc_id(id)
-        paths.append(path)
+        paths.append((path, doc_id))
     print "got paths"
     return paths
 
 def extract_tables(document_paths):
     print "begin table extraction"
     for path in document_paths:
-        print path
-        paragraphs_list = ttt.get_paragraphs(codecs.open(path, 'r', 'utf8'))
+        paragraphs_list = ttt.get_paragraphs(codecs.open(path[0], 'r', 'utf8'))
         tables = ttt.identify_tables(paragraphs_list)
-        print len(tables)
         try:
-            params = [(t.offset, t.length, ','.join(t.header), ' '.join(t.title), ' '.join(t.body), ' '.join(t.content)) for t in tables]
-            cmd = 'INSERT INTO tables ("offset", "length", headers, title, body, content) VALUES (%s,%s,%s,%s,%s,%s)'
+            params = [(t.offset, t.length, ','.join(t.header), ' '.join(t.title), ' '.join(t.body), ' '.join(t.content), path[1]) for t in tables]
+            cmd = 'INSERT INTO tables ("offset", "length", headers, title, body, content, document_id) VALUES (%s,%s,%s,%s,%s,%s,%s)'
             cur = conn.cursor()
             cur.executemany(cmd, params)
             conn.commit()
         except Exception as ex:
-            print "Failed to import doc %s: %s" % (path, ex)
+            print "Failed to import doc %s: %s" % (path[0], ex)
 
 
 if __name__ == "__main__":
