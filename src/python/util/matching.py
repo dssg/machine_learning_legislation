@@ -234,16 +234,19 @@ def main():
     parser.add_argument('--year', required=True, type=int, help='which year to match')
     parser.add_argument('--threads', type=int, default = 8, help='number of threads to run in parallel')
     parser.add_argument('--update', action='store_true',default = False,  help = 'record matches in db')
-    parser.add_argument('--redo', action='store_true', default = True, help = 'if an entity is matched, dont redo')
-    parser.add_argument('--num', type=int, default = 8, help='number of examples to check')
+    parser.add_argument('--redo', action='store_true', default = False, help = 'if an entity is matched, dont redo')
+    parser.add_argument('--num', type=int, default=-1, help='number of examples to check')
 
     args = parser.parse_args()
     redo = args.redo
     update = args.update
+    
 
+    
 
-
-    earmarks = get_earmarks(args.year)[:args.num]
+    earmarks = get_earmarks(args.year)
+    if args.num > -1:
+        earmarks = earmarks[:args.num]
     p = mp.Pool(args.threads)
     results = p.map(process_earmark, earmarks)
 

@@ -10,8 +10,6 @@ import ConfigParser
 from urlparse import *
 import time
 
-db = MySQLdb.connect(host="sunlight.c5faqozfo86k.us-west-2.rds.amazonaws.com",user="sunlight", passwd="govtrack", db="wikipedia")
-
 def get_category_hierarchy(page_name, depth=1):
     """
     given a Wikipedia page name, return a list of its categories
@@ -34,16 +32,22 @@ def get_categories(page_name, is_category=False):
     """
     given a Wikipedia page name, return a list of its categories
     """
-    cur = db.cursor()
-    namespace = 0
-    if is_category:
-        namespace = 14
-    cur.execute("""SELECT cl_to FROM categorylinks cl
-                JOIN page p ON cl.cl_from = p.page_id
-                WHERE p.page_title=%s AND page_namespace=%s;
-            """ , (page_name, namespace) )
-    categories = [result[0] for result in cur.fetchall()]
-    return categories
+    db = MySQLdb.connect(host="sunlight.c5faqozfo86k.us-west-2.rds.amazonaws.com",user="sunlight", passwd="govtrack", db="wikipedia")
+    try:
+        cur = db.cursor()
+        namespace = 0
+        if is_category:
+            namespace = 14
+        cur.execute("""SELECT cl_to FROM categorylinks cl
+                        JOIN page p ON cl.cl_from = p.page_id
+                        WHERE p.page_title=%s AND page_namespace=%s;
+                    """ , (page_name, namespace) )
+        categories = [result[0] for result in cur.fetchall()]
+        return categories
+    except Exception as ex:
+        logging.exception("Erorr in mysql fetching")
+    finally:
+        db.close()   
 
 def get_wiki_page_title_google(entity_name, max_tries = 5):
     query = '%s site:en.wikipedia.org' % (entity_name)
