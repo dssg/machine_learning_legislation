@@ -1,18 +1,16 @@
 import os, sys, inspect
 sys.path.insert(0, os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],".."))))
 import argparse
-from util import wiki_tools
 from pprint import pprint
-import psycopg2
 import logging
 import numpy as np
+from scipy import interp
 from sklearn import svm
 from sklearn.ensemble import RandomForestClassifier
 from sklearn import cross_validation
 from sklearn.cross_validation import StratifiedKFold
 import scipy
 from dao.Entity import Entity
-from feature_generators import wikipedia_categories_feature_generator
 from instance import Instance
 from pipe import Pipe
 import pickle
@@ -23,34 +21,36 @@ from sklearn.cross_validation import StratifiedShuffleSplit
 from scipy.sparse import *
 from sklearn.metrics import *
 from pprint import pprint
+from sklearn.metrics import roc_curve, auc
+import matplotlib.pyplot as plt
+from sklearn.metrics import roc_curve, auc
+import copy
 
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 
 
 
-def do_cv(X, Y, folds=5):
-    C = 1.0
-    clf = svm.SVC(kernel='linear', C=C)
-    #clf = sklearn.ensemble.RandomForestClassifier()
-    logging.info("Starting cross validation")
-    skf = cross_validation.StratifiedKFold(Y, n_folds=folds)
-    scores = cross_validation.cross_val_score(clf, X, Y, cv=skf, n_jobs=8, scoring='f1')
-    logging.info("Cross validation completed!")
-    print scores
-    print("F1: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
+def do_cv(X, Y, folds=5, C=1.0):
+		clf = svm.LinearSVC(C=C)
+		#clf = sklearn.ensemble.RandomForestClassifier()
+		logging.info("Starting cross validation")
+		skf = cross_validation.StratifiedKFold(Y, n_folds=folds)
+		scores = cross_validation.cross_val_score(clf, X, Y, cv=skf, n_jobs=8, scoring='f1')
+		logging.info("Cross validation completed!")
+		print scores
+		print("F1: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
 
 
 def do_grid_search(instances, X, y, folds = 5):
 
-		d = split_data_stratified(X,y)
-		param_grid = {'C': [0.000001, 0.001, 1, 100 , 10000], 'kernel': ['linear']}
-		#param_grid = {'C': [1,], 'kernel': ['linear']}
+		train, test = split_data_stratified(X,y)
+		param_grid = {'C': [0.000001, 0.001, 0.01, 1,10, 100 ,1000, 10000]}
 
-		svr = svm.SVC()
-		strat_cv = cross_validation.StratifiedKFold(d['y_train'], n_folds=folds)
-		clf = grid_search.GridSearchCV(cv  = strat_cv, estimator = svr, param_grid  =param_grid, scoring = 'f1', n_jobs=8)
-		clf.fit(d['X_train'], d['y_train'])
+		svr = svm.LinearSVC()
+		strat_cv = cross_validation.StratifiedShuffleSplit(y[train], test_size = 1.0/folds)
+		clf = grid_search.GridSearchCV(cv  = strat_cv, estimator = svr, param_grid  =param_grid,  n_jobs=8)
+		clf.fit(X[train], y[train])
 
 		print("Best parameters set found on development set:")
 		best_parameters, score, _ = max(clf.grid_scores_, key=lambda x: x[1])
@@ -65,14 +65,102 @@ def do_grid_search(instances, X, y, folds = 5):
 		print("Detailed classification report:")
 		print("The model is trained on the full development set.")
 		print("The scores are computed on the full evaluation set.")
-		y_true, y_pred = d['y_test'], clf.predict(d['X_test'])
+		y_true, y_pred = y[test], clf.predict(X[test])
 		print("Confusion Matrix on Test Data")
 		print confusion_matrix(y_true, y_pred)
 		print("F1 score on Test Data")
 		print f1_score(y_true, y_pred)
 		print(classification_report(y_true, y_pred))
 
-		do_error_analysis(y_true, y_pred, d['test_index'], instances)
+		#do_error_analysis(y_true, y_pred, d['test_index'], instances)
+
+
+def do_roc(X, y, folds = 5):
+
+		cv = StratifiedKFold(y, n_folds=folds)
+		classifier = svm.LinearSVC()
+
+		mean_tpr = 0.0
+		mean_fpr = np.linspace(0, 1, 100)
+		all_tpr = []
+
+		for i, (train, test) in enumerate(cv):
+				#probas_ = classifier.fit(X[train], y[train]).predict_proba(X[test])
+
+				model = classifier.fit(X[train], y[train])
+				raw =  model.decision_function(X[test])
+				
+				#y_pred = model.predict(X[test]) 
+				# Compute ROC curve and area the curve
+				
+				fpr, tpr, thresholds = roc_curve(y[test], raw)
+				mean_tpr += interp(mean_fpr, fpr, tpr)
+				mean_tpr[0] = 0.0
+				roc_auc = auc(fpr, tpr)
+				plt.plot(fpr, tpr, lw=1, label='ROC fold %d (area = %0.2f)' % (i, roc_auc))
+
+		plt.plot([0, 1], [0, 1], '--', color=(0.6, 0.6, 0.6), label='Luck')
+
+		mean_tpr /= len(cv)
+		mean_tpr[-1] = 1.0
+		mean_auc = auc(mean_fpr, mean_tpr)
+		plt.plot(mean_fpr, mean_tpr, 'k--',
+		         label='Mean ROC (area = %0.2f)' % mean_auc, lw=2)
+
+		plt.xlim([-0.05, 1.05])
+		plt.ylim([-0.05, 1.05])
+		plt.xlabel('False Positive Rate')
+		plt.ylabel('True Positive Rate')
+		plt.title('Receiver operating characteristic example')
+		plt.legend(loc="lower right")
+		plt.savefig('roc.png')
+
+
+
+def do_feature_analysis(pipe, X, y):
+
+	groups = set(['entity_text_bag_feature_generator', 'geo_feature_generator', 'simple_entity_text_feature_generator', 'wikipedia_categories_feature_generator'])
+	train, test = split_data_stratified(X,y)
+	opt_groups = set()
+	classifier = svm.LinearSVC()
+
+
+	model = classifier.fit(X[train], y[train])
+	raw =  model.decision_function(X[test])	
+	fpr, tpr, thresholds = roc_curve(y[test], raw)
+	roc_auc = auc(fpr, tpr)
+	plt.plot(fpr, tpr, lw=1, label='ALL  (area = %0.2f)' % (roc_auc))
+
+
+	all_tpr = []
+
+	for g in groups:
+			keep_groups = copy.copy(opt_groups)
+
+			keep_groups.add(g)
+			X,y,space = pipe.instances_to_scipy_sparse(ignore_groups = groups.difference(keep_groups))
+			model = classifier.fit(X[train], y[train])
+			raw =  model.decision_function(X[test])
+			fpr, tpr, thresholds = roc_curve(y[test], raw)
+			roc_auc = auc(fpr, tpr)
+			plt.plot(fpr, tpr, lw=1, label='%s  (area = %0.2f)' % (g.split("_")[0], roc_auc))
+
+
+	plt.plot([0, 1], [0, 1], '--', color=(0.6, 0.6, 0.6), label='Luck')
+
+	
+	plt.xlim([-0.05, 1.05])
+	plt.ylim([-0.05, 1.05])
+	plt.xlabel('False Positive Rate')
+	plt.ylabel('True Positive Rate')
+	plt.title('Receiver operating characteristic example')
+	plt.legend(loc="lower right")
+	plt.savefig('features.png')
+
+
+
+
+
 
 
 def do_error_analysis(y_true, y_pred, test_index, instances):
@@ -121,58 +209,54 @@ def do_error_analysis(y_true, y_pred, test_index, instances):
 
 
 
-def split_data(X, y, test_size = 0.33):
-		X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
-		return {'X_train': X_train, 'X_test': X_test, 'y_train': y_train, 'y_test': y_test}
-
-
-
 def split_data_stratified(X, y, test_size = 0.33):
 		sss = StratifiedShuffleSplit(y, 1, test_size=test_size, random_state=0)
-		X = csr_matrix(X)
 		for train_index, test_index in sss:
-				X_train, X_test = X[train_index], X[test_index]
-				y_train, y_test = y[train_index], y[test_index]
-				return {'X_train': X_train, 'X_test': X_test, 'y_train': y_train, 'y_test': y_test, 'test_index': test_index}
+				return train_index, test_index
 
 def serialize_instances(instances, outfile):
     pickle.dump(instances, open(outfile,'wb'))
     
 def main():
-    parser = argparse.ArgumentParser(description='build classifier')
-    subparsers = parser.add_subparsers(dest='subparser_name' ,help='sub-command help')
-    
-    parser_cv = subparsers.add_parser('cv', help='perform cross validation')
-    parser_cv.add_argument('--folds', type=int, required=False, help='number of folds')
-    parser_cv.add_argument('--data_folder',  required=True, help='file to pickled instances')
+		parser = argparse.ArgumentParser(description='build classifier')
+		subparsers = parser.add_subparsers(dest='subparser_name' ,help='sub-command help')
+
+		parser_cv = subparsers.add_parser('cv', help='perform cross validation')
+		parser_cv.add_argument('--folds', type=int, default = 5, required=False, help='number of folds')
+		parser_cv.add_argument('--data_folder',  required=True, help='file to pickled instances')
 
 
-    parser_grid = subparsers.add_parser('grid', help='perform CV grid search')
-    parser_grid.add_argument('--folds', type=int, required=False, help='number of folds')
-    parser_grid.add_argument('--data_folder',  required=True, help='file to pickled instances')
-    
-    args = parser.parse_args()    
-    
-    #x, y, space = encode_instances(positive_entities, negative_entities, args.depth, distinguish_levels)
-    
-    if args.subparser_name =="cv":
-        logging.info("Start deserializing")
-        instances = classifier.load_instances(args.data_folder)
-        pipe = Pipe( instances=instances)
-        logging.info("Start loading X, Y")
-        X,y,space = pipe.instances_to_scipy_sparse() 
-        do_cv(X, y, args.folds)
+		parser_grid = subparsers.add_parser('grid', help='perform CV grid search')
+		parser_grid.add_argument('--folds', type=int, default = 5, required=False, help='number of folds')
+		parser_grid.add_argument('--data_folder',  required=True, help='file to pickled instances')
 
+		parser_roc = subparsers.add_parser('roc', help='perform CV grid search')
+		parser_roc.add_argument('--folds', type=int, default = 5, required=False, help='number of folds')
+		parser_roc.add_argument('--data_folder',  required=True, help='file to pickled instances')
 
-    elif args.subparser_name =="grid":
-        logging.info("Start deserializing")
-        instances = classifier.load_instances(args.data_folder)
-        pipe = Pipe( instances=instances)
-        logging.info("Start loading X, Y")
-        X,y,space = pipe.instances_to_scipy_sparse() 
-        do_grid_search(instances, X, y, args.folds)
+		parser_feat = subparsers.add_parser('features', help='perform CV grid search')
+		parser_feat.add_argument('--data_folder',  required=True, help='file to pickled instances')
+
+		args = parser.parse_args()    
+		logging.info("Start deserializing")
+		instances = classifier.load_instances(args.data_folder)
+		pipe = Pipe( instances=instances)
+		logging.info("Start loading X, Y")
+		X,y,space = pipe.instances_to_scipy_sparse()
+		
+
+		if args.subparser_name =="cv":
+				do_cv(X, y, args.folds)
+
+		elif args.subparser_name =="grid":
+				do_grid_search(instances, X, y, args.folds)
+
+		elif args.subparser_name == "roc":
+				do_roc(X, y, args.folds)
  
-        
+ 		elif args.subparser_name == "features":
+ 				do_feature_analysis(pipe, X, y)
+
 
 
 

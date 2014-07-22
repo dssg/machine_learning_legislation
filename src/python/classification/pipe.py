@@ -5,7 +5,6 @@ to generate x and y to be used in sciket learn classification
 import os, sys, inspect
 sys.path.insert(0, os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],".."))))
 import argparse
-from util import wiki_tools
 from pprint import pprint
 import psycopg2
 import logging
@@ -93,7 +92,7 @@ class Pipe:
                     X[i, feature_space[f.name]] =  f.value
             Y.append(self.instances[i].target_class)
         logging.info("%d Instances loaded with %d features" %(X.shape[0], X.shape[1]))
-        return scipy.sparse.coo_matrix(X), np.array(Y), feature_space            
+        return scipy.sparse.csr_matrix(X), np.array(Y), feature_space            
             
     def set_instances(self, instances):
         self.instances = instances
