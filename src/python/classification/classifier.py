@@ -66,7 +66,7 @@ def get_instances_from_entities(entities, target_class, threads = 1):
     return global_data[:]
     #return map( lambda entity: Instance(entity, target_class), entities )
 
-def convert_to_svmlight_format(X, Y, entities, path):
+def convert_to_svmlight_format(X, Y, instances, path):
     """
     converts x and y into svmlight representaiton and write's it to path
     """
@@ -87,7 +87,7 @@ def convert_to_svmlight_format(X, Y, entities, path):
         f.write("%d " %(label))
         for t in list_values:
             f.write("%d:%d " %(t[1]+1, t[2]))
-        f.write("#%d\n" %(entities[i]))
+        f.write("#%d\n" %(instances[i].attributes['id']))
     f.close()
         
 
@@ -136,6 +136,7 @@ def main():
     
     parser_transform = subparsers.add_parser('transform', help='transform to svmlight format')
     parser_transform.add_argument('--outfile', required=True, help='path to output file')
+    parser_transform.add_argument('--data_folder', required=True, help='path to the data folder')
     
     parser_serialize = subparsers.add_parser('serialize', help='pickle instances')
     parser_serialize.add_argument('--data_folder', required=True, help='path to output pickled files')
@@ -162,7 +163,10 @@ def main():
     #x, y, space = encode_instances(positive_entities, negative_entities, args.depth, distinguish_levels)
    
     if args.subparser_name == "transform":
-        convert_to_svmlight_format(x, y, positive_entities+negative_entities, args.outfile)
+        instances = load_instances(args.data_folder)
+        pipe = Pipe([], instances)
+        x, y, feature_space = pipe.instances_to_scipy_sparse()
+        convert_to_svmlight_format(x, y, instances, args.outfile)
 
 
         

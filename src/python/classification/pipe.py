@@ -81,7 +81,6 @@ class Pipe:
 
         logging.debug("%d instances, %d features" %(len(self.instances), len(feature_space)))
         #X = np.zeros( (len(self.instances), len(feature_space)) )
-        print (len(self.instances), len(feature_space))
         X = scipy.sparse.lil_matrix((len(self.instances), len(feature_space)))
         Y = []
         for i in range(len(self.instances)):
