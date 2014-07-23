@@ -23,7 +23,7 @@ import multiprocessing as mp
 from multiprocessing import Manager
 
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s')
 
 CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
 
@@ -176,7 +176,7 @@ def main():
         entity_text_bag_feature_generator.unigram_feature_generator(force=True),
         entity_text_bag_feature_generator.bigram_feature_generator(force=True),
         simple_entity_text_feature_generator.simple_entity_text_feature_generator(force=True),
-        
+        gen_geo_features.geo_feature_generator(force = True),
         ]
 
         pipe = Pipe(feature_generators, instances, num_processes=args.threads)
@@ -197,7 +197,7 @@ def main():
         feature_generators = [
         wikipedia_categories_feature_generator.wikipedia_categories_feature_generator(depth = 2, distinguish_levels=False, force=True ),
         entity_text_bag_feature_generator.unigram_feature_generator(force=True),
-        entity_text_bag_feature_generator.bigram_feature_generator(force=True),
+        #entity_text_bag_feature_generator.bigram_feature_generator(force=True),
         simple_entity_text_feature_generator.simple_entity_text_feature_generator(force=True),
         gen_geo_features.geo_feature_generator(force = True),
         ]
