@@ -204,3 +204,9 @@ def doc_id_to_path(doc_id):
         raise ex
     finally:
         conn.close()
+        
+if __name__=="__main__":
+    if len(sys.argv) > 1:
+        print doc_id_to_path(int(sys.argv[1]))
+    else:
+        print "USAGE: python %s <doc_id>" %(sys.argv[0])
