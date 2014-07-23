@@ -25,7 +25,8 @@ from sklearn.metrics import roc_curve, auc
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc
 import copy
-
+from time import time
+from sklearn.feature_selection import SelectPercentile, chi2
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 
@@ -112,8 +113,48 @@ def do_roc(X, y, folds = 5):
 		plt.savefig('roc.png')
 
 
+def do_feature_selection(X, y):
+		all_tpr = []
+		train, test = split_data_stratified(X,y)
 
-def do_feature_analysis(pipe, X, y):
+		for percentile in range(5, 45, 5):
+				t0 = time()
+				ch2 = SelectPercentile(chi2, percentile=percentile)
+				X_train = ch2.fit_transform(X[train], y[train])
+				print("done in %fs" % (time() - t0))
+
+				model = get_model_with_optimal_C(X_train, y[train])
+
+				X_test = ch2.transform(X[test])
+
+				scores = model.decision_function(X_test)
+				fpr, tpr, thresholds = roc_curve(y[test], scores)
+
+				roc_auc = auc(fpr, tpr)
+				plt.plot(fpr, tpr, lw=1, label='%d  (area = %0.2f)' % (percentile, roc_auc))
+				print "\n"*4
+
+
+		plt.plot([0, 1], [0, 1], '--', color=(0.6, 0.6, 0.6), label='Luck')
+
+		
+		plt.xlim([-0.05, 1.05])
+		plt.ylim([-0.05, 1.05])
+		plt.xlabel('False Positive Rate')
+		plt.ylabel('True Positive Rate')
+		plt.title('Receiver operating characteristic example')
+		plt.legend(loc="lower right")
+		plt.savefig('feature_selection.png')
+
+
+		
+
+		
+		print()
+
+
+
+def do_feature_set_analysis(pipe, X, y):
 
 	groups = set(['unigram_feature_generator','bigram_feature_generator', 'geo_feature_generator', 'simple_entity_text_feature_generator', 'wikipedia_categories_feature_generator'])
 	train, test = split_data_stratified(X,y)
@@ -256,7 +297,8 @@ def main():
 				do_roc(X, y, args.folds)
  
  		elif args.subparser_name == "features":
- 				do_feature_analysis(pipe, X, y)
+ 				do_feature_selection(X, y)
+ 				#do_feature_set_analysis(pipe, X, y)
 
 
 
