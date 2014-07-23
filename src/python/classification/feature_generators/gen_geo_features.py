@@ -29,7 +29,7 @@ def get_states_from_csv():
     full = set()
     full_upper = set()
     abbr = set()
-    r = csv.reader(open(expanduser("~")+"/machine_learning_legislation/data/states.csv"))
+    r = csv.reader(open("/mnt/data/sunlight/misc/states.csv"))
     for row in r:
         full_upper.add(row[0].upper())
         full.add(row[0])
@@ -40,7 +40,7 @@ def get_states_from_csv():
 def get_cities_from_csv():
     cities = set()
     cities_upper = set()
-    r = csv.reader(open(expanduser("~")+"/machine_learning_legislation/data/cities.csv"))
+    r = csv.reader(open("/mnt/data/sunlight/misc/cities.csv"))
     for row in r:
         cities_upper.add(row[1].upper())
         cities.add(row[1])

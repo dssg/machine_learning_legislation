@@ -25,7 +25,8 @@ from sklearn.metrics import roc_curve, auc
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc
 import copy
-
+from time import time
+from sklearn.feature_selection import SelectPercentile, chi2
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 
@@ -33,46 +34,47 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(mess
 
 def do_cv(X, Y, folds=5, C=1.0):
 		clf = svm.LinearSVC(C=C)
-		#clf = sklearn.ensemble.RandomForestClassifier()
 		logging.info("Starting cross validation")
 		skf = cross_validation.StratifiedKFold(Y, n_folds=folds)
-		scores = cross_validation.cross_val_score(clf, X, Y, cv=skf, n_jobs=8, scoring='f1')
+		scores = cross_validation.cross_val_score(clf, X, Y, cv=skf, n_jobs=8, scoring='roc_auc')
 		logging.info("Cross validation completed!")
 		print scores
-		print("F1: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
+		print("ROC_AUC: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
+
 
 
 def do_grid_search(instances, X, y, folds = 5):
 
 		train, test = split_data_stratified(X,y)
+		model = get_model_with_optimal_C (X[train], y[train], folds)
+		scores = model.decision_function(X[test])
+		print("\nROC score on Test Data")
+		print roc_auc_score( y[test], scores)
+
+		#do_error_analysis(y_true, y_pred, d['test_index'], instances)
+
+
+
+def get_model_with_optimal_C (X, y, folds = 5):
 		param_grid = {'C': [0.000001, 0.001, 0.01, 1,10, 100 ,1000, 10000]}
-
 		svr = svm.LinearSVC()
-		strat_cv = cross_validation.StratifiedShuffleSplit(y[train], test_size = 1.0/folds)
-		clf = grid_search.GridSearchCV(cv  = strat_cv, estimator = svr, param_grid  =param_grid,  n_jobs=8)
-		clf.fit(X[train], y[train])
 
-		print("Best parameters set found on development set:")
-		best_parameters, score, _ = max(clf.grid_scores_, key=lambda x: x[1])
+		strat_cv = cross_validation.StratifiedShuffleSplit(y, test_size = 1.0/folds)
+		model = grid_search.GridSearchCV(cv  = strat_cv, estimator = svr, param_grid  = param_grid,  n_jobs=8, scoring = 'roc_auc')
+		model.fit(X, y)
+		scores =  model.decision_function(X)
+				
+		print "\nROC_AUC on training data: %f" % roc_auc_score(y, scores)
+		print("Best parameters set found via CV on training Data:")
+		best_parameters, score, _ = max(model.grid_scores_, key=lambda x: x[1])
 		print(best_parameters, score)
 		print "\n"
-
-		print("Grid scores on development set:")
-		for params, mean_score, scores in clf.grid_scores_:
+		print("Grid scores:")
+		for params, mean_score, scores in model.grid_scores_:
 		    print("%0.3f (+/-%0.03f) for %r"
 		          % (mean_score, scores.std() / 2, params))
 
-		print("Detailed classification report:")
-		print("The model is trained on the full development set.")
-		print("The scores are computed on the full evaluation set.")
-		y_true, y_pred = y[test], clf.predict(X[test])
-		print("Confusion Matrix on Test Data")
-		print confusion_matrix(y_true, y_pred)
-		print("F1 score on Test Data")
-		print f1_score(y_true, y_pred)
-		print(classification_report(y_true, y_pred))
-
-		#do_error_analysis(y_true, y_pred, d['test_index'], instances)
+		return model
 
 
 def do_roc(X, y, folds = 5):
@@ -85,14 +87,9 @@ def do_roc(X, y, folds = 5):
 		all_tpr = []
 
 		for i, (train, test) in enumerate(cv):
-				#probas_ = classifier.fit(X[train], y[train]).predict_proba(X[test])
-
+				
 				model = classifier.fit(X[train], y[train])
 				raw =  model.decision_function(X[test])
-				
-				#y_pred = model.predict(X[test]) 
-				# Compute ROC curve and area the curve
-				
 				fpr, tpr, thresholds = roc_curve(y[test], raw)
 				mean_tpr += interp(mean_fpr, fpr, tpr)
 				mean_tpr[0] = 0.0
@@ -116,16 +113,56 @@ def do_roc(X, y, folds = 5):
 		plt.savefig('roc.png')
 
 
+def do_feature_selection(X, y):
+		all_tpr = []
+		train, test = split_data_stratified(X,y)
 
-def do_feature_analysis(pipe, X, y):
+		for percentile in range(5, 45, 5):
+				t0 = time()
+				ch2 = SelectPercentile(chi2, percentile=percentile)
+				X_train = ch2.fit_transform(X[train], y[train])
+				print("done in %fs" % (time() - t0))
 
-	groups = set(['entity_text_bag_feature_generator', 'geo_feature_generator', 'simple_entity_text_feature_generator', 'wikipedia_categories_feature_generator'])
+				model = get_model_with_optimal_C(X_train, y[train])
+
+				X_test = ch2.transform(X[test])
+
+				scores = model.decision_function(X_test)
+				fpr, tpr, thresholds = roc_curve(y[test], scores)
+
+				roc_auc = auc(fpr, tpr)
+				plt.plot(fpr, tpr, lw=1, label='%d  (area = %0.2f)' % (percentile, roc_auc))
+				print "\n"*4
+
+
+		plt.plot([0, 1], [0, 1], '--', color=(0.6, 0.6, 0.6), label='Luck')
+
+		
+		plt.xlim([-0.05, 1.05])
+		plt.ylim([-0.05, 1.05])
+		plt.xlabel('False Positive Rate')
+		plt.ylabel('True Positive Rate')
+		plt.title('Receiver operating characteristic example')
+		plt.legend(loc="lower right")
+		plt.savefig('feature_selection.png')
+
+
+		
+
+		
+		print()
+
+
+
+def do_feature_set_analysis(pipe, X, y):
+
+	groups = set(['unigram_feature_generator','bigram_feature_generator', 'geo_feature_generator', 'simple_entity_text_feature_generator', 'wikipedia_categories_feature_generator'])
 	train, test = split_data_stratified(X,y)
 	opt_groups = set()
-	classifier = svm.LinearSVC()
+	classifier = svm.LinearSVC(C = 0.01)
 
 
-	model = classifier.fit(X[train], y[train])
+	model = get_model_with_optimal_C (X[train], y[train])
 	raw =  model.decision_function(X[test])	
 	fpr, tpr, thresholds = roc_curve(y[test], raw)
 	roc_auc = auc(fpr, tpr)
@@ -138,12 +175,17 @@ def do_feature_analysis(pipe, X, y):
 			keep_groups = copy.copy(opt_groups)
 
 			keep_groups.add(g)
+			print keep_groups
 			X,y,space = pipe.instances_to_scipy_sparse(ignore_groups = groups.difference(keep_groups))
-			model = classifier.fit(X[train], y[train])
-			raw =  model.decision_function(X[test])
-			fpr, tpr, thresholds = roc_curve(y[test], raw)
+
+			model = get_model_with_optimal_C (X[train], y[train])
+
+			scores =  model.decision_function(X[test])
+			fpr, tpr, thresholds = roc_curve(y[test], scores)
+
 			roc_auc = auc(fpr, tpr)
 			plt.plot(fpr, tpr, lw=1, label='%s  (area = %0.2f)' % (g.split("_")[0], roc_auc))
+			print "\n"*4
 
 
 	plt.plot([0, 1], [0, 1], '--', color=(0.6, 0.6, 0.6), label='Luck')
@@ -255,7 +297,8 @@ def main():
 				do_roc(X, y, args.folds)
  
  		elif args.subparser_name == "features":
- 				do_feature_analysis(pipe, X, y)
+ 				do_feature_selection(X, y)
+ 				#do_feature_set_analysis(pipe, X, y)
 
 
 

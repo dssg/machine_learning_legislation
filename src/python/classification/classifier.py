@@ -23,7 +23,7 @@ import multiprocessing as mp
 from multiprocessing import Manager
 
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s')
 
 CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
 
@@ -66,7 +66,7 @@ def get_instances_from_entities(entities, target_class, threads = 1):
     return global_data[:]
     #return map( lambda entity: Instance(entity, target_class), entities )
 
-def convert_to_svmlight_format(X, Y, instances, path):
+def convert_to_svmlight_format(X, Y, entities, path):
     """
     converts x and y into svmlight representaiton and write's it to path
     """
@@ -87,7 +87,7 @@ def convert_to_svmlight_format(X, Y, instances, path):
         f.write("%d " %(label))
         for t in list_values:
             f.write("%d:%d " %(t[1]+1, t[2]))
-        f.write("#%d\n" %(instances[i].attributes['id']))
+        f.write("#%d\n" %(entities[i]))
     f.close()
         
 
@@ -136,37 +136,27 @@ def main():
     
     parser_transform = subparsers.add_parser('transform', help='transform to svmlight format')
     parser_transform.add_argument('--outfile', required=True, help='path to output file')
-    parser_transform.add_argument('--data_folder', required=True, help='path to the data folder')
     
     parser_serialize = subparsers.add_parser('serialize', help='pickle instances')
     parser_serialize.add_argument('--data_folder', required=True, help='path to output pickled files')
-    parser_serialize.add_argument('--threads', type=int, default = 1, help='number of threads to run in parallel')
+    parser_serialize.add_argument('--threads', type=int, default = 8, help='number of threads to run in parallel')
     parser_serialize.add_argument('--positivefile', required=True, help='file containing entities identified as earmarks')
     parser_serialize.add_argument('--negativefile',  required=True, help='file containing negative example entities')
 
 
     parser_add = subparsers.add_parser('add', help='add to pickled instances')
     parser_add.add_argument('--data_folder', required=True, help='path to output pickled files')
-    parser_add.add_argument('--threads', type=int, default = 1, help='number of threads to run in parallel')
+    parser_add.add_argument('--threads', type=int, default = 8, help='number of threads to run in parallel')
 
 
 
 
 
-    #parser.add_argument('--depth', type=int, default = 3,  help='wikipedia category level depth')
-    #parser.add_argument('--ignore_levels', action='store_false', default=False, help='distinguish between category levels')
     
     args = parser.parse_args()
-    #distinguish_levels = not args.ignore_levels
     
-    
-    #x, y, space = encode_instances(positive_entities, negative_entities, args.depth, distinguish_levels)
-   
     if args.subparser_name == "transform":
-        instances = load_instances(args.data_folder)
-        pipe = Pipe([], instances)
-        x, y, feature_space = pipe.instances_to_scipy_sparse()
-        convert_to_svmlight_format(x, y, instances, args.outfile)
+        convert_to_svmlight_format(x, y, positive_entities+negative_entities, args.outfile)
 
 
         
@@ -183,9 +173,10 @@ def main():
 
         feature_generators = [
         wikipedia_categories_feature_generator.wikipedia_categories_feature_generator(depth = 2, distinguish_levels=False, force=True ),
-        entity_text_bag_feature_generator.entity_text_bag_feature_generator(force=True),
+        entity_text_bag_feature_generator.unigram_feature_generator(force=True),
+        entity_text_bag_feature_generator.bigram_feature_generator(force=True),
         simple_entity_text_feature_generator.simple_entity_text_feature_generator(force=True),
-        
+        gen_geo_features.geo_feature_generator(force = True),
         ]
 
         pipe = Pipe(feature_generators, instances, num_processes=args.threads)
@@ -201,12 +192,17 @@ def main():
         logging.info("pid: " + str(os.getpid()))
         instances = load_instances(args.data_folder)
         logging.info("Creating pipe")
+
+
         feature_generators = [
-        wikipedia_categories_feature_generator.wikipedia_categories_feature_generator(depth = 2, distinguish_levels=False, force=False ),
-        entity_text_bag_feature_generator.entity_text_bag_feature_generator(force=False),
-        simple_entity_text_feature_generator.simple_entity_text_feature_generator(force=False),
+        wikipedia_categories_feature_generator.wikipedia_categories_feature_generator(depth = 2, distinguish_levels=False, force=True ),
+        entity_text_bag_feature_generator.unigram_feature_generator(force=True),
+        #entity_text_bag_feature_generator.bigram_feature_generator(force=True),
+        simple_entity_text_feature_generator.simple_entity_text_feature_generator(force=True),
         gen_geo_features.geo_feature_generator(force = True),
         ]
+
+
         pipe = Pipe(feature_generators, instances, num_processes=args.threads)
         logging.info("Pushing into pipe")
         pipe.push_all_parallel()
