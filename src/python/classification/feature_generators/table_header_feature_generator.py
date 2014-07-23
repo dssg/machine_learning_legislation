@@ -14,6 +14,7 @@ CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dss
 class table_headers_feature_generator:
     def __init__(self, **kwargs):
         self.name = "table_headers_feature_generator"
+        self.force = kwargs.get("force", True)
         self.feature_prefix = "TABLE_HEADER_"
         self.no_header_feature = "NO_HEADERS_FOUND"
 
