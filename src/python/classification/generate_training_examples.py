@@ -16,7 +16,7 @@ import logging
 from dao import Entity
 from data_importer import import_entity_wikipedia_mapping
 
-logging.basicConfig(level=logging.ERROR)
+logging.basicConfig(level=logging.INFO)
 
 CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
 
@@ -30,6 +30,13 @@ def write_entity_ids_to_file(entities, path):
     for entity_id in entities:
 		f.write( "%d\n"%(entity_id))
     f.close()
+    
+def write_entity_text_to_file(entities, path):
+    f = codecs.open(path,'w', 'utf8')
+    for entity in entities:
+		f.write( "%s\n"%(entity))
+    f.close()
+    
     	
 def get_negative_examples(congress, count, outfile):
     entity_ids = [entity["mid"] for entity in  get_candiadte_negative_examples_from_db(congress, count)]
@@ -41,7 +48,7 @@ def match_entities_to_google(entity_ids):
         entity = Entity.Entity(eid)
         pages = wiki_tools.get_wiki_page_title_google_cse(entity.entity_inferred_name)
         if len(pages)>1:
-            import_entity_wikipedia_mapping.import_mapping( [(eid, pages[0]),] )
+            import_entity_wikipedia_mapping.import_mapping( [(eid, pages[0],''),] )
 
 def get_earmark_entities(year):
     """
@@ -88,6 +95,35 @@ def get_candiadte_negative_examples_from_db( congress = 111, count=10000 ):
     finally:
         conn.close()
 
+def get_uniqe_table_entities():
+    """
+    gets a list of unique entities from the database
+    """
+    conn = psycopg2.connect(CONN_STRING)
+    try:
+        cmd = """
+        select distinct entity_inferred_name from entities
+        where source = 'table'
+        """
+        cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        cur.execute(cmd)
+        records = cur.fetchall()
+        return [r['entity_inferred_name'].decode('utf8') for r in records]
+    except Exception as ex:
+        logging.exception("failed to get negative examples")
+    finally:
+        conn.close()
+        
+def match_entities_to_google_by_text(entity_text_list):
+    i = 0
+    for e_text in entity_text_list:
+        i+=1
+        if i % 1000 == 0:
+            logging.info("Finished %d out of %d" %(i, len(entity_text_list)))
+        pages = wiki_tools.get_wiki_page_title_google_cse(e_text)
+        if len(pages)>1:
+            import_entity_wikipedia_mapping.import_mapping( [(0, pages[0],e_text),] )
+    
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description='get positive and negative examples')
@@ -102,8 +138,14 @@ if __name__=="__main__":
     parser_negative.add_argument('--count', type = int, required=True, help='number of negative examples')
     parser_negative.add_argument('--outfile',  required=True, help='the file to which to write results')
     
-    parser_google = subparsers.add_parser('google', help='match entities in file to wikipedia')
+    parser_all_entities = subparsers.add_parser('alltable', help='gets all table entities')
+    parser_all_entities.add_argument('--outfile',  required=True, help='the file to which to write results')
+    
+    parser_google = subparsers.add_parser('google', help='match entities in file to wikipedia, file contains entity ids')
     parser_google.add_argument('--file',  required=True, help='the file containing list of entity ids')
+    
+    parser_google_text = subparsers.add_parser('google_text', help='match entities in file to wikipedia, file contains entity text')
+    parser_google_text.add_argument('--file',  required=True, help='the file containing list of entity ids')
     
     args = parser.parse_args()
     if args.subparser_name =="positive":
@@ -113,6 +155,14 @@ if __name__=="__main__":
     elif args.subparser_name =="google":
         entity_ids = [int(line.strip()) for line in open(args.file).readlines() if len(line) > 1 ]
         match_entities_to_google(entity_ids)
+    elif args.subparser_name =="alltable":
+        write_entity_text_to_file(get_uniqe_table_entities(), args.outfile)
+    elif args.subparser_name =="google_text":
+        entities = [line[:-1] for line in codecs.open(args.file,'r','utf8').readlines() if len(line) > 1 ]
+        match_entities_to_google_by_text(entities)
+    
+        
+        
         
         
     

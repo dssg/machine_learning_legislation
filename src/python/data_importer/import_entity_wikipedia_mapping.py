@@ -18,15 +18,15 @@ def import_mapping_by_path(path):
     it's imported to the database
     """
     lines = [line.strip().split('\t') for line in open(path,'r').readlines() if len(line.strip().split('\t')) > 1]
-    params = [(int(line[0]), line[1]) for line in lines ]
+    params = [(int(line[0]), line[1], '') for line in lines ]
     import_mapping(params)
         
-def import_mapping(entity_wiki_pairs):
+def import_mapping(entity_wiki_triplet):
     conn = psycopg2.connect(CONN_STRING)
     try:
         cur = conn.cursor()
-        cmd = 'insert into entity_wikipedia_page (entity_id, wikipedia_page) values(%s,%s)'
-        cur.executemany(cmd, entity_wiki_pairs)
+        cmd = 'insert into entity_wikipedia_page (entity_id, wikipedia_page, entity_text) values(%s,%s, %s)'
+        cur.executemany(cmd, entity_wiki_triplet)
         conn.commit()
     except Exception as ex:
         conn.rollback()
