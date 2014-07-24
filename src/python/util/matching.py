@@ -68,6 +68,20 @@ earmarks_blacklist = set([normalize(line.strip()) for line in open('/mnt/data/su
 
 CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
 
+
+def get_earmark(earmark_id):
+    conn = psycopg2.connect(CONN_STRING)
+
+    columns = ["earmark_id", "full_description", "short_description", "recipient"]
+    cmd = "select "+", ".join(columns)+" from earmarks where earmark_id = "+str(earmark_id)
+
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cur.execute(cmd)
+    earmark = cur.fetchall()
+    conn.close()
+    return earmark[0]
+
+
 def get_earmarks(year):
     conn = psycopg2.connect(CONN_STRING)
 
@@ -143,7 +157,13 @@ def find_best_shingle_matches(matches):
     for doc_id in matches.keys():
         sorted_desc_entities = sorted(matches[doc_id], key=operator.itemgetter(0), reverse=True)
         if len(sorted_desc_entities) > 0:
-            best_matches[doc_id] =  sorted_desc_entities[0]
+            highest_score = sorted_desc_entities[0][0]
+            best_matches[doc_id] =  []
+            for d in sorted_desc_entities:
+                if d[0] < highest_score:
+                    break
+                best_matches[doc_id].append(d)
+
     return best_matches
 
 def update_earmark_offsets (earmark_id, matches):
@@ -153,13 +173,14 @@ def update_earmark_offsets (earmark_id, matches):
     conn = psycopg2.connect(CONN_STRING)
     cur = conn.cursor()
     for doc_id in matches.keys():
-        offset = matches[doc_id][1]['entity_offset']
-        length = matches[doc_id][1]['entity_length']
-        entity_id = matches[doc_id][1]['id']
-        print (offset, length, entity_id, earmark_id, doc_id)
-        cmd = "update earmark_documents set inferred_offset = %d, ingerred_length = %d, matched_entity_id = %d where earmark_id = %d and document_id = %d" % (offset, length, entity_id, earmark_id, doc_id)
+        for d in matches[doc_id]: 
+            offset = d[1]['entity_offset']
+            length = d[1]['entity_length']
+            entity_id = d[1]['id']
+            print (offset, length, entity_id, earmark_id, doc_id)
+            cmd = "update earmark_documents set inferred_offset = %d, ingerred_length = %d, matched_entity_id = %d where earmark_id = %d and document_id = %d and manual_match = False" % (offset, length, entity_id, earmark_id, doc_id)
 
-        cur.execute(cmd)
+            cur.execute(cmd)
     conn.commit()
     conn.close()
 
@@ -185,16 +206,17 @@ def process_earmark(earmark):
         #print path_tools.doc_id_to_path(doc_id)
         doc_entities = get_entities(doc_id)
         for doc_entity in doc_entities:
-            normalized_entity_text = normalize(doc_entity['entity_text'])
+            #normalized_entity_text = normalize(doc_entity['entity_text'])
             normalized_entity_inferred_name = normalize(doc_entity['entity_inferred_name'])
-            if normalized_entity_text in earmarks_blacklist or \
-            normalized_entity_inferred_name in earmarks_blacklist:
+            #if normalized_entity_text in earmarks_blacklist or \
+            if normalized_entity_inferred_name in earmarks_blacklist:
                 continue
                 
-            e_text_shingles = shinglize(normalized_entity_text, 2)
+            #e_text_shingles = shinglize(normalized_entity_text, 2)
             e_name_shingles = shinglize(normalized_entity_inferred_name, 2)
             
-            lst_entities = [e_text_shingles, e_name_shingles]
+            #lst_entities = [e_text_shingles, e_name_shingles]
+            lst_entities = [e_name_shingles]
             lst_txt = [fd_shingles, sd_shingles, r_shingles] #excerpt_shingles
             
             
@@ -229,35 +251,53 @@ def process_earmark(earmark):
 def main():
 
     parser = argparse.ArgumentParser(description='Match entities to OMB')
+    subparsers = parser.add_subparsers(dest='subparser_name' ,help='sub-command help')
+
+    parser_m = subparsers.add_parser('match', help='transform to svmlight format')
+    parser_d = subparsers.add_parser('debug', help='transform to svmlight format')
+
+
     
     
-    parser.add_argument('--year', required=True, type=int, help='which year to match')
-    parser.add_argument('--threads', type=int, default = 8, help='number of threads to run in parallel')
-    parser.add_argument('--update', action='store_true',default = False,  help = 'record matches in db')
-    parser.add_argument('--redo', action='store_true', default = False, help = 'if an entity is matched, dont redo')
-    parser.add_argument('--num', type=int, default=-1, help='number of examples to check')
+    parser_m.add_argument('--year', required=True, type=int, help='which year to match')
+    parser_m.add_argument('--threads', type=int, default = 8, help='number of threads to run in parallel')
+    parser_m.add_argument('--update', action='store_true',default = False,  help = 'record matches in db')
+    parser_m.add_argument('--redo', action='store_true', default = False, help = 'if an entity is matched, dont redo')
+    parser_m.add_argument('--num', type=int, default=-1, help='number of examples to check')
+
+
+    parser_d.add_argument('--entity', required = True, type = int)
+    parser_d.add_argument('--earmark', required = True, type = int)
+
 
     args = parser.parse_args()
-    redo = args.redo
-    update = args.update
+    
     
 
-    
+    if args.subparser_name == "match":
 
-    earmarks = get_earmarks(args.year)
-    if args.num > -1:
-        earmarks = earmarks[:args.num]
-    p = mp.Pool(args.threads)
-    results = p.map(process_earmark, earmarks)
+        redo = args.redo
+        update = args.update
 
-    matches = [ t[1] for t in results]
-    for r in results:
-        print "\n".join(r[0])
-        print "\n"
+        earmarks = get_earmarks(args.year)
+        if args.num > -1:
+            earmarks = earmarks[:args.num]
+        p = mp.Pool(args.threads)
+        results = p.map(process_earmark, earmarks)
 
-    accuracy = sum(matches)/float(len(matches))
+        matches = [ t[1] for t in results]
+        for r in results:
+            print "\n".join(r[0])
+            print "\n"
 
-    print "Accuracy: ", accuracy
+        accuracy = sum(matches)/float(len(matches))
+
+        print "Accuracy: ", accuracy
+
+    else:
+        print process_earmark(get_earmark(args.earmark))
+
+
     
 
 
