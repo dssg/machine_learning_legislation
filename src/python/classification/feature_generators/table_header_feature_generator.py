@@ -11,7 +11,7 @@ import psycopg2
 
 CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
 
-class table_headers_feature_generator:
+class table_header_feature_generator:
     def __init__(self, **kwargs):
         self.name = "table_headers_feature_generator"
         self.force = kwargs.get("force", True)
@@ -22,8 +22,9 @@ class table_headers_feature_generator:
         if not self.force and instance.feature_groups.has_key(self.name):
             return
         entity_id = instance.attributes["id"]
+        instance.feature_groups[self.name] = []
 
-        headers = self.get_table_from_entity_id(entity_id)
+        headers = self.get_table_headers_from_entity_id(entity_id)
         if headers:
             instance.feature_groups[self.name] += [Feature(self.feature_prefix + header, 1, self.name) for header in headers]
         else:
@@ -46,7 +47,7 @@ class table_headers_feature_generator:
         if headers:
             if len(headers[0].split(",")) > 1:
                 return [h.lower() for h in headers[0].split(",")]
-            else
+            else:
                 return headers[0]
         else:
             return None
