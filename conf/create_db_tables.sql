@@ -76,3 +76,11 @@ id serial primary key,
 entity_id int,
 wikipedia_page varchar(512)
 );
+
+create table earmark_document_matched_entities
+(
+earmark_document_id int,
+matched_entity_id int,
+manual_match boolean default False,
+primary key (earmark_document_id, matched_entity_id)
+);

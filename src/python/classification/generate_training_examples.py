@@ -55,16 +55,18 @@ def get_earmark_entities(year):
     get entities for doc_id
     """
     conn = psycopg2.connect(CONN_STRING)
-    columns = ["matched_entity_id", "entity_inferred_name"]
-    cmd = "select distinct "+", ".join(columns)+" from entities, earmark_documents, earmarks where \
-     matched_entity_id = entities.id and earmarks.earmark_id = earmark_documents.earmark_id and enacted_year = %s"
+    cmd = """select earmark_document_matched_entities.matched_entity_id as matched_entity_id
+    from entities, earmark_documents, earmarks, earmark_document_matched_entities 
+    where 
+    earmark_document_matched_entities.matched_entity_id = entities.id 
+    and earmarks.earmark_id = earmark_documents.earmark_id 
+    and enacted_year = %s 
+    and earmark_document_matched_entities.earmark_document_id = earmark_documents.id"""
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
     cur.execute(cmd, (year,))
     records = cur.fetchall()
     conn.close()
     return records
-
-
 
 def get_candiadte_negative_examples_from_db( congress = 111, count=10000 ):
     """
@@ -76,13 +78,14 @@ def get_candiadte_negative_examples_from_db( congress = 111, count=10000 ):
         select mid, entity_inferred_name, random() as r
         from
         (select e.entity_inferred_name, max(e.id) as mid
-        from entities as e 
-        join documents on e.document_id = documents.id 
-        join congress_meta_document as cmd on documents.congress_meta_document = cmd.id 
-        left join earmark_documents as ed on ed.matched_entity_id = e.id 
-        where e.source = 'table' 
-            and cmd.congress = %s 
-            and ed.matched_entity_id is null group by e.entity_inferred_name) as vu 
+        from entities as e , documents, congress_meta_document as cmd
+        where e.document_id = documents.id 
+        and documents.congress_meta_document = cmd.id
+        and e.source = 'table'
+        and cmd.congress = %s
+        and e.id not in (select distinct matched_entity_id from earmark_document_matched_entities)
+        group by e.entity_inferred_name
+        ) as vu 
         order by r limit %s
         """
         cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)

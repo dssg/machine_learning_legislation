@@ -40,12 +40,13 @@ def match_earmark_with_entity(earmark_id, entity_id):
         earmark_to_doc_id = check_earmark_doc_match(earmark_id, entity_id)
         if earmark_to_doc_id > -1:
             cmd = """
-            update earmark_documents
-            set matched_entity_id = %s, manual_match = True
-            where id = %s
+            insert into earmark_document_matched_entities
+            (earmark_document_id, matched_entity_id, manual_match)
+            values 
+            (%s, %s, True)
             """
             cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-            cur.execute(cmd, (entity_id, earmark_to_doc_id ))
+            cur.execute(cmd, (earmark_to_doc_id, entity_id ))
             conn.commit()
         else:
             logging.error("Earmark id %d is not matched to the document containing entity %d, please create new earmark first" %(earmark_id, entity_id))

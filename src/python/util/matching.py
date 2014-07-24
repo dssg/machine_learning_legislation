@@ -11,6 +11,8 @@ import operator
 import path_tools
 import re
 import argparse
+import amend_earmark
+import logging
 
 
 from nltk import metrics, stem, tokenize
@@ -18,9 +20,7 @@ from nltk.tokenize.punkt import PunktWordTokenizer
 from nltk.tokenize import WhitespaceTokenizer
 import multiprocessing as mp
 
-update = False
-redo = True
-
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s')
  
 
 class bcolors:
@@ -97,7 +97,7 @@ def get_earmarks(year):
     #print "number of earmarks", len(earmarks)
 
 
-def get_earmark_docs(earmark_id):
+def get_earmark_docs(earmark_id, redo):
     """
     given earmark id, return list of all docs that map to this earmark
     """
@@ -177,15 +177,29 @@ def update_earmark_offsets (earmark_id, matches):
             offset = d[1]['entity_offset']
             length = d[1]['entity_length']
             entity_id = d[1]['id']
-            print (offset, length, entity_id, earmark_id, doc_id)
-            cmd = "update earmark_documents set inferred_offset = %d, ingerred_length = %d, matched_entity_id = %d where earmark_id = %d and document_id = %d and manual_match = False" % (offset, length, entity_id, earmark_id, doc_id)
-
+            earmark_document_id = amend_earmark.check_earmark_doc_match(earmark_id, entity_id)
+            #print (offset, length, entity_id, earmark_id, doc_id)
+            cmd = """insert into earmark_document_matched_entities 
+            (earmark_document_id,matched_entity_id ,manual_match)
+            select %d, %d, False
+            WHERE NOT EXISTS 
+            (SELECT 1 FROM earmark_document_matched_entities WHERE earmark_document_id=%d and matched_entity_id = %d );
+            """ %(earmark_document_id,entity_id, earmark_document_id,  entity_id  )
+            logging.debug("Inserting for entity %d and earmark %d" %(entity_id, earmark_id))
             cur.execute(cmd)
     conn.commit()
     conn.close()
 
 
-def process_earmark(earmark):
+def process_earmark(earmark_redo_update_triple):
+    earmark = earmark_redo_update_triple[0]
+    redo = True
+    if len(earmark_redo_update_triple) > 1 :
+        redo = earmark_redo_update_triple[1]
+    update = True
+    if len(earmark_redo_update_triple) > 2 :
+        update = earmark_redo_update_triple[2]
+    
 
     out_str = []
 
@@ -199,7 +213,7 @@ def process_earmark(earmark):
     excerpt_matches =set()
     desc_full_matches =set()
     matches = {}
-    docs = get_earmark_docs(earmark['earmark_id'])
+    docs = get_earmark_docs(earmark['earmark_id'], redo)
     for doc_id in docs:
         matches[doc_id] = []
         out_str.append(str(doc_id))
@@ -272,7 +286,7 @@ def main():
 
     args = parser.parse_args()
     
-    
+    print "Process id: ", os.getpid()
 
     if args.subparser_name == "match":
 
@@ -283,7 +297,7 @@ def main():
         if args.num > -1:
             earmarks = earmarks[:args.num]
         p = mp.Pool(args.threads)
-        results = p.map(process_earmark, earmarks)
+        results = p.map(process_earmark, [(earmark, redo, update) for earmark in earmarks])
 
         matches = [ t[1] for t in results]
         for r in results:
