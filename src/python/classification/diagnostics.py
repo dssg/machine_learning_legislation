@@ -28,18 +28,33 @@ import copy
 from time import time
 from sklearn.feature_selection import SelectPercentile, chi2
 
+from util.matching import bcolors
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 
 
 
-def do_cv(X, Y, folds=5, C=1.0):
+def do_cv(X, y, folds=5, C=1.0):
 		clf = svm.LinearSVC(C=C)
 		logging.info("Starting cross validation")
 		skf = cross_validation.StratifiedKFold(Y, n_folds=folds)
-		scores = cross_validation.cross_val_score(clf, X, Y, cv=skf, n_jobs=8, scoring='roc_auc')
+		scores = cross_validation.cross_val_score(clf, X, y, cv=skf, n_jobs=8, scoring='roc_auc')
 		logging.info("Cross validation completed!")
 		print scores
 		print("ROC_AUC: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
+
+
+def error_analysis_for_labeling(instances, X, y, folds):
+	clf = svm.LinearSVC(C=0.1)
+	cv = cross_validation.StratifiedKFold(y, n_folds=folds, random_state = 0)
+	for i, (train, test) in enumerate(cv):
+				model = clf.fit(X[train], y[train])
+				y_pred = model.predict(X[test])
+				scores =  model.decision_function(X[test])
+				print("\nROC score on Test Data")
+				print roc_auc_score( y[test], scores)
+				do_error_analysis (y[test], y_pred, scores, test, instances)
+				print "\n"*5
 
 
 
@@ -51,7 +66,7 @@ def do_grid_search(instances, X, y, folds = 5):
 		print("\nROC score on Test Data")
 		print roc_auc_score( y[test], scores)
 
-		#do_error_analysis(y_true, y_pred, d['test_index'], instances)
+		#do_error_analysis(y[test], model.predict(X[test]), scores,  test, instances)
 
 
 
@@ -59,7 +74,7 @@ def get_model_with_optimal_C (X, y, folds = 5):
 		param_grid = {'C': [0.000001, 0.001, 0.01, 1,10, 100 ,1000, 10000]}
 		svr = svm.LinearSVC()
 
-		strat_cv = cross_validation.StratifiedShuffleSplit(y, test_size = 1.0/folds)
+		strat_cv = cross_validation.StratifiedKFold(y, n_folds = folds)
 		model = grid_search.GridSearchCV(cv  = strat_cv, estimator = svr, param_grid  = param_grid,  n_jobs=8, scoring = 'roc_auc')
 		model.fit(X, y)
 		scores =  model.decision_function(X)
@@ -205,47 +220,56 @@ def do_feature_set_analysis(pipe, X, y):
 
 
 
-def do_error_analysis(y_true, y_pred, test_index, instances):
-	print y_true
-	print y_pred
-	print test_index
+def do_error_analysis(y_true, y_pred, scores, test_index, instances, num = 1000):
+	#print y_true
+	#print y_pred
+	#print test_index
+
+	template = "{0:8}  {1:5}  {2:150}" 
 
 	false_negatives = np.logical_and(y_true==1, y_pred==0).nonzero()[0]
 	false_positives = np.logical_and(y_true==0, y_pred==1).nonzero()[0]
 	true_negatives = np.logical_and(y_true==0, y_pred==0).nonzero()[0]
 	true_positives = np.logical_and(y_true==1, y_pred==1).nonzero()[0]
 
+	if false_positives.size >0:
+			fp_entities = [(instances[test_index[i]].attributes, scores[i]) for i in np.nditer(false_positives)]
+			print "False Positives:"
+			print len(fp_entities)
+			for t in sorted(fp_entities[:num], key = lambda x: x[1]):
+					#str(t[1])
+					print template.format (t[0]['id'], t[0]['document_id'], bcolors.OKGREEN + t[0]['entity_inferred_name'] + bcolors.ENDC) 
 
+	print "\n"*5
+
+
+	
 	if false_negatives.size > 0 :
 		print "False Negatives:"
-		fn_entities = [instances[test_index[i]].attributes['entity_inferred_name'] for i in np.nditer(false_negatives)]
+		fn_entities = [ (instances[test_index[i]].attributes, scores[i]) for i in np.nditer(false_negatives)]
 		print len(fn_entities)
-		pprint(fn_entities)
-
+		for t in sorted(fn_entities[:num], key = lambda x :x[1], reverse = True):
+				print template.format (t[0]['id'], t[0]['document_id'], bcolors.OKGREEN + t[0]['entity_inferred_name'] + bcolors.ENDC) 
 	print "\n"*5
 
-	if false_positives.size >0:
-		fp_entities = [instances[test_index[i]].attributes['entity_inferred_name'] for i in np.nditer(false_positives)]
-		print "False Posiitves:"
-		print len(fp_entities)
-		pprint(fp_entities)
-
-	print "\n"*5
+	
 
 	if true_negatives.size >0:
 		print "True Negatives:"
-		tn_entities = [instances[test_index[i]].attributes['entity_inferred_name'] for i in np.nditer(true_negatives)]
+		tn_entities = [(instances[test_index[i]].attributes, scores[i]) for i in np.nditer(true_negatives)]
 		print len(tn_entities)
-		pprint(tn_entities)
+		for t in sorted( tn_entities[:num], key = lambda x: x[1]):
+				print template.format (t[0]['id'], t[0]['document_id'], bcolors.OKGREEN + t[0]['entity_inferred_name'] + bcolors.ENDC)
 
 
 	print "\n"*5
 
 	if true_positives.size > 0 :
-		print "True Posiitves:"
-		tp_entities = [instances[test_index[i]].attributes['entity_inferred_name'] for i in np.nditer(true_positives)]
+		print "True Positives:"
+		tp_entities = [(instances[test_index[i]].attributes, scores[i]) for i in np.nditer(true_positives)]
 		print len(tp_entities)
-		pprint(tp_entities)
+		for t in sorted (tp_entities[:num], key = lambda x :x[1], reverse = True):
+				print template.format (t[0]['id'], t[0]['document_id'], bcolors.OKGREEN + t[0]['entity_inferred_name'] + bcolors.ENDC)
 
 
 
@@ -288,7 +312,8 @@ def main():
 		
 
 		if args.subparser_name =="cv":
-				do_cv(X, y, args.folds)
+				#do_cv(X, y, args.folds)
+				error_analysis_for_labeling(instances, X, y, args.folds)
 
 		elif args.subparser_name =="grid":
 				do_grid_search(instances, X, y, args.folds)
