@@ -74,9 +74,9 @@ def get_wiki_page_title_google_cse(entity_name, max_tries = 5):
     """
     MAKE SURE TO DELETE THIS FUNCTION BEFORE OPEN SOURCING THE CODE
     here no need to filter with wikipedia, cse already filters for wikipedia
+    entity_name: must be unicode
     """
-    pass
-    query = urllib.quote(entity_name)
+    query = urllib.quote(entity_name.encode('utf8'))
     google_url = "https://www.googleapis.com/customsearch/v1element?key=AIzaSyCVAXiUzRYsML1Pv6RwSG1gunmMikTzQqY&rsz=filtered_cse&num=10&hl=en&prettyPrint=false&source=gcsc&gss=.com&cx=016849338463251080306:gukdipzeymu&sort=&googlehost=www.google.com&oq=a&q=%s" % query
     wait_time = 3
     for i in range(max_tries):

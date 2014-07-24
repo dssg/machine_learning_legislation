@@ -120,9 +120,14 @@ def match_entities_to_google_by_text(entity_text_list):
         i+=1
         if i % 1000 == 0:
             logging.info("Finished %d out of %d" %(i, len(entity_text_list)))
-        pages = wiki_tools.get_wiki_page_title_google_cse(e_text)
-        if len(pages)>1:
-            import_entity_wikipedia_mapping.import_mapping( [(0, pages[0],e_text),] )
+        try:
+            pages = wiki_tools.get_wiki_page_title_google_cse(e_text)
+            if len(pages)>1:
+                import_entity_wikipedia_mapping.import_mapping( [(0, pages[0],e_text),] )
+        except Exception as ex:
+            logging.exception("Erorr in fetching page for entity")
+        
+            
     
 
 if __name__=="__main__":
