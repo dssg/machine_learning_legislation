@@ -134,3 +134,23 @@ class table_is_first_table_feature_generator:
             raise exp
         finally:
             conn.close()
+
+class row_contains_president_feature_generator(table_feature_generator):
+    def __init__(self, **kwargs):
+        self.name = "row_contains_president_feature_generator"
+        self.force = kwargs.get("force", True)
+
+    def operate(self, instance):
+        if not self.force and instance.feature_groups.has_key(self.name):
+            return
+        entity_id = instance.attributes["id"]
+        table = self.get_entity_table(entity_id)
+        entity_row = [row for row in table.rows if instance.attributes["entity_text"] in row.raw_text][0]
+        instance.feature_groups[self.name] = []
+        if "president" in entity_row.raw_text.lower():
+            instance.feature_groups[self.name].append(Feature("PRESIDENT_IN_ROW", 1, self.name))
+        else:
+            instance.feature_groups[self.name].append(Feature("PRESIDENT_IN_ROW", 0, self.name))
+
+        logging.debug( "Feature count for entity id: %d after %s" %(instance.attributes["id"], self.name))
+
