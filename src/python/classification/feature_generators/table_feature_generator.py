@@ -5,6 +5,7 @@ from classification.feature import Feature
 import logging
 import psycopg2
 import util.text_table_tools as ttt
+from StringIO import StringIO
 
 CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
 
@@ -27,7 +28,11 @@ class table_feature_generator:
             cur.execute(sql, params)
             content = cur.fetchone()
             if content:
-                return ttt.identify_tables(content)[0]
+                #s = StringIO()
+                #raw = StringIO(content)
+                #s.write(content)
+                self.paragraphs = ttt.get_paragraphs_from_string(content[0])
+                return ttt.identify_tables(self.paragraphs)[0]
             else:
                 return Table()
         except Exception as exp:
