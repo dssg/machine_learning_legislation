@@ -69,6 +69,12 @@ def geo_inferred_text_has_county(s):
     #print "Has County: ", ret
     return ret
 
+def geo_inferred_text_ends_with_state(tokens, abbr, full):
+    if len(tokens) == 0:
+        return 0
+    last_token = tokens[-1]
+    return last_token in abbr or last_token in full
+
 
 
 def geo_inferred_text_has_city(s, cities, cities_upper):
@@ -115,6 +121,7 @@ class geo_feature_generator:
         instance.feature_groups[self.name].append(Feature('GEO_FEAUTURE_geo_inferred_text_has_state', geo_inferred_text_has_state(tokens, self.full, self.full_upper, self.abbr), self.name))
         instance.feature_groups[self.name].append(Feature('GEO_FEAUTURE_geo_inferred_text_has_county', geo_inferred_text_has_county(s), self.name))
         instance.feature_groups[self.name].append(Feature('GEO_FEAUTURE_geo_inferred_text_has_city', geo_inferred_text_has_city(s, self.cities, self.cities_upper), self.name))
+        instance.feature_groups[self.name].append(Feature('GEO_FEAUTURE_geo_inferred_text_ends_with_state', geo_inferred_text_ends_with_state(tokens, self.abbr, self.full), self.name))
 
 
         logging.debug( "Feature count %d for entity id: %d after %s" %(instance.feature_count(),instance.attributes["id"], self.name))

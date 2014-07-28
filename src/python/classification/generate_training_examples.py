@@ -55,13 +55,16 @@ def get_earmark_entities(year):
     get entities for doc_id
     """
     conn = psycopg2.connect(CONN_STRING)
-    cmd = """select earmark_document_matched_entities.matched_entity_id as matched_entity_id
+    cmd = """select max (earmark_document_matched_entities.matched_entity_id) as matched_entity_id
     from entities, earmark_documents, earmarks, earmark_document_matched_entities 
     where 
     earmark_document_matched_entities.matched_entity_id = entities.id 
     and earmarks.earmark_id = earmark_documents.earmark_id 
     and enacted_year = %s 
-    and earmark_document_matched_entities.earmark_document_id = earmark_documents.id"""
+    and earmark_document_matched_entities.earmark_document_id = earmark_documents.id
+    group by entity_inferred_name"""
+
+
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
     cur.execute(cmd, (year,))
     records = cur.fetchall()

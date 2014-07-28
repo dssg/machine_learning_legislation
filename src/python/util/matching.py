@@ -178,7 +178,6 @@ def update_earmark_offsets (earmark_id, matches):
             length = d[1]['entity_length']
             entity_id = d[1]['id']
             earmark_document_id = amend_earmark.check_earmark_doc_match(earmark_id, entity_id)
-            #print (offset, length, entity_id, earmark_id, doc_id)
             cmd = """insert into earmark_document_matched_entities 
             (earmark_document_id,matched_entity_id ,manual_match)
             select %d, %d, False

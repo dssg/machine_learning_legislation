@@ -17,7 +17,6 @@ from classification.feature import Feature
 def normalize(s):
     for p in string.punctuation:
         s = s.replace(p, ' ')
-
     s = re.sub(r'[ ]{2,}', " ", s)
     return s.lower()
 
@@ -46,6 +45,25 @@ def normalize(s):
     s = re.sub(r'[ ]{2,}', " ", s)
     return s.lower()
 
+def starts_with_for(s):
+    tokens = s.split(' ')
+    if len(tokens) == 0:
+        return False
+
+    first_token = tokens[0]
+    return first_token == 'for'
+
+
+def percent_capitalized(s):
+    tokens = s.split(' ')
+    if len(tokens) == 0:
+        return 0
+    count = 0.0
+    for token in tokens:
+        if len(token)>0:
+            if token[0].isupper():
+                count +=1.0
+    return count/len(tokens)
 
 
 
@@ -54,7 +72,9 @@ feature_functions = [
 ('num_dots', num_dots), 
 ('length', len), 
 ('num_words', num_words), 
-('num_digits', num_digits), 
+('num_digits', num_digits),
+('starts_with_for', starts_with_for), 
+('percent_capitalized', percent_capitalized),
 ]
 
     
