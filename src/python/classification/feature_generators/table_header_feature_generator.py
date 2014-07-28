@@ -33,21 +33,28 @@ class table_header_feature_generator:
 
     def get_table_headers_from_entity_id(self,entity_id):
         conn = psycopg2.connect(CONN_STRING)
-        cur = conn.cursor()
-        params = [entity_id]
-        sql = """SELECT headers
-            FROM tables t
-            JOIN entities e
-            ON t.document_id = e.document_id
-            WHERE e.id = %s
-            AND e.entity_offset > t.offset
-            AND e.entity_offset < t.offset + t.length"""
-        cur.execute(sql, params)
-        headers = cur.fetchone()
-        if headers:
-            if len(headers[0].split(",")) > 1:
-                return [h.lower() for h in headers[0].split(",")]
+        try:
+            cur = conn.cursor()
+            params = [entity_id]
+            sql = """SELECT headers
+                FROM tables t
+                JOIN entities e
+                ON t.document_id = e.document_id
+                WHERE e.id = %s
+                AND e.entity_offset > t.offset
+                AND e.entity_offset < t.offset + t.length"""
+            cur.execute(sql, params)
+            headers = cur.fetchone()
+            if headers:
+                if len(headers[0].split(",")) > 1:
+                    return [h.lower() for h in headers[0].split(",")]
+                else:
+                    return headers[0]
             else:
-                return headers[0]
-        else:
-            return None
+                return None
+        except Exception as exp:
+            conn.rollback()
+            print exp
+            raise exp
+        finally:
+            conn.close()

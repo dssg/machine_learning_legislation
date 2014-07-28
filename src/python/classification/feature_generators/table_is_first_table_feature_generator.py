@@ -17,33 +17,37 @@ class table_is_first_table_feature_generator:
             return
         entity_id = instance.attributes["id"]
         instance.feature_groups[self.name] = []
+        instance.feature_groups[self.name].append(Feature("IS_FIRST_TABLE", self.is_first_table(entity_id), self.name))
 
-        if headers:
-            instance.feature_groups[self.name] += [Feature(self.feature_prefix + header, 1, self.name) for header in headers]
-        else:
-            instance.feature_groups[self.name].append(Feature(self.no_header_feature, 1, self.name))
         logging.debug( "Feature count for entity id: %d after %s" %(instance.attributes["id"], self.name))
 
     def is_first_table(self,entity_id):
         conn = psycopg2.connect(CONN_STRING)
-        cur = conn.cursor()
-        params = [entity_id]
-        sql = """SELECT t.id
-        FROM tables t
-        JOIN entities e
-        ON t.document_id = e.document_id
-        WHERE e.id = %s
-        AND e.entity_offset > t.offset
-        AND e.entity_offset < t.offset + t.length"""
-        cur.execute(sql, params)
-        entity_table_id = cur.fetchone()
-        sql = """SELECT t.id
-        FROM tables t
-        JOIN entities e
-        ON t.document_id = e.document_id
-        WHERE e.id = %s
-        ORDER BY t.id
-        LIMIT 1"""
-        cur.execute(sql, params)
-        first_table_id = cur.fetchone()
-        return entity_table_id == first_table_id
+        try:
+            cur = conn.cursor()
+            params = [entity_id]
+            sql = """SELECT t.id
+            FROM tables t
+            JOIN entities e
+            ON t.document_id = e.document_id
+            WHERE e.id = %s
+            AND e.entity_offset > t.offset
+            AND e.entity_offset < t.offset + t.length"""
+            cur.execute(sql, params)
+            entity_table_id = cur.fetchone()
+            sql = """SELECT t.id
+            FROM tables t
+            JOIN entities e
+            ON t.document_id = e.document_id
+            WHERE e.id = %s
+            ORDER BY t.id
+            LIMIT 1"""
+            cur.execute(sql, params)
+            first_table_id = cur.fetchone()
+            return int(entity_table_id == first_table_id)
+        except Exception as exp:
+            conn.rollback()
+            print exp
+            raise exp
+        finally:
+            conn.close()
