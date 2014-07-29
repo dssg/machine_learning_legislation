@@ -38,18 +38,11 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(mess
 
 
 
-def do_cv(X, y, folds=5, C=1.0):
-		clf = svm.LinearSVC(C=C)
-		logging.info("Starting cross validation")
-		skf = cross_validation.StratifiedKFold(Y, n_folds=folds)
-		scores = cross_validation.cross_val_score(clf, X, y, cv=skf, n_jobs=8, scoring='roc_auc')
-		logging.info("Cross validation completed!")
-		print scores
-		print("ROC_AUC: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
+
 
 
 def error_analysis_for_labeling(instances, X, y, folds, data_folder):
-	clf = svm.LinearSVC(C=0.1)
+	clf = svm.LinearSVC(C=0.01)
 	cv = cross_validation.StratifiedKFold(y, n_folds=folds, random_state = 0)
 	for i, (train, test) in enumerate(cv):
 				model = clf.fit(X[train], y[train])
@@ -63,20 +56,20 @@ def error_analysis_for_labeling(instances, X, y, folds, data_folder):
 
 
 
-def do_grid_search(instances, X, y, folds = 5):
+def do_grid_search(X_train, y_train, X_test, y_test):
 
 		train, test = split_data_stratified(X,y)
-		model = get_model_with_optimal_C (X[train], y[train], folds)
-		scores = model.decision_function(X[test])
+		model = get_model_with_optimal_C (X_train, y_train, folds)
+		scores = model.decision_function(X_test)
 		print("\nROC score on Test Data")
-		print roc_auc_score( y[test], scores)
+		print roc_auc_score( y_test, scores)
 
 		#do_error_analysis(y[test], model.predict(X[test]), scores,  test, instances)
 
 
 
 def get_model_with_optimal_C (X, y, folds = 5):
-		param_grid = {'C': [0.000001, 0.001, 0.01, 1,10, 100 ,1000, 10000]}
+		param_grid = {'C': [ 0.001, 0.01, 0.1, 0.5, 1, 4, 10, 100]}
 		svr = svm.LinearSVC()
 
 		strat_cv = cross_validation.StratifiedKFold(y, n_folds = folds)
@@ -97,40 +90,7 @@ def get_model_with_optimal_C (X, y, folds = 5):
 		return model
 
 
-def do_roc(X, y, folds = 5):
 
-		cv = StratifiedKFold(y, n_folds=folds)
-		classifier = svm.LinearSVC()
-
-		mean_tpr = 0.0
-		mean_fpr = np.linspace(0, 1, 100)
-		all_tpr = []
-
-		for i, (train, test) in enumerate(cv):
-				
-				model = classifier.fit(X[train], y[train])
-				raw =  model.decision_function(X[test])
-				fpr, tpr, thresholds = roc_curve(y[test], raw)
-				mean_tpr += interp(mean_fpr, fpr, tpr)
-				mean_tpr[0] = 0.0
-				roc_auc = auc(fpr, tpr)
-				plt.plot(fpr, tpr, lw=1, label='ROC fold %d (area = %0.2f)' % (i, roc_auc))
-
-		plt.plot([0, 1], [0, 1], '--', color=(0.6, 0.6, 0.6), label='Luck')
-
-		mean_tpr /= len(cv)
-		mean_tpr[-1] = 1.0
-		mean_auc = auc(mean_fpr, mean_tpr)
-		plt.plot(mean_fpr, mean_tpr, 'k--',
-		         label='Mean ROC (area = %0.2f)' % mean_auc, lw=2)
-
-		plt.xlim([-0.05, 1.05])
-		plt.ylim([-0.05, 1.05])
-		plt.xlabel('False Positive Rate')
-		plt.ylabel('True Positive Rate')
-		plt.title('Receiver operating characteristic example')
-		plt.legend(loc="lower right")
-		plt.savefig('roc.png')
 
 
 def do_feature_selection(X, y):
@@ -174,17 +134,22 @@ def do_feature_selection(X, y):
 
 
 
-def do_feature_set_analysis(pipe, X, y):
+def do_feature_set_analysis(train_instances, test_instances):
 
-	groups = set(['unigram_feature_generator','bigram_feature_generator', 'geo_feature_generator', 'simple_entity_text_feature_generator', 'wikipedia_categories_feature_generator'])
-	train, test = split_data_stratified(X,y)
+	groups = set(['unigram_feature_generator','bigram_feature_generator', 'geo_feature_generator', 'simple_entity_text_feature_generator'])
+
+	
 	opt_groups = set()
 	classifier = svm.LinearSVC(C = 0.01)
 
+	pipe = Pipe( instances=train_instances)
+	X_train, y_train, feature_space = pipe.instances_to_scipy_sparse()
+	X_test, y_test = test_instances_to_scipy_sparse(feature_space, test_instances)
 
-	model = get_model_with_optimal_C (X[train], y[train])
-	raw =  model.decision_function(X[test])	
-	fpr, tpr, thresholds = roc_curve(y[test], raw)
+
+	model = get_model_with_optimal_C (X_train, y_train)
+	raw =  model.decision_function(X_test)	
+	fpr, tpr, thresholds = roc_curve(y_test, raw)
 	roc_auc = auc(fpr, tpr)
 	plt.plot(fpr, tpr, lw=1, label='ALL  (area = %0.2f)' % (roc_auc))
 
@@ -195,10 +160,15 @@ def do_feature_set_analysis(pipe, X, y):
 			keep_groups = copy.copy(opt_groups)
 			keep_groups.add(g)
 			print keep_groups
-			X,y,space = pipe.instances_to_scipy_sparse(ignore_groups = groups.difference(keep_groups))
-			model = get_model_with_optimal_C (X[train], y[train])
-			scores =  model.decision_function(X[test])
-			fpr, tpr, thresholds = roc_curve(y[test], scores)
+
+
+			X_train, y_train, feature_space = pipe.instances_to_scipy_sparse(ignore_groups = groups.difference(keep_groups))
+			X_test, y_test = test_instances_to_scipy_sparse(feature_space, test_instances)
+
+
+			model = get_model_with_optimal_C (X_train, y_train)
+			scores =  model.decision_function(X_test)
+			fpr, tpr, thresholds = roc_curve(y_test, scores)
 			roc_auc = auc(fpr, tpr)
 			plt.plot(fpr, tpr, lw=1, label='%s  (area = %0.2f)' % (g.split("_")[0], roc_auc))
 			print "\n"*4
@@ -309,48 +279,72 @@ def split_data_stratified(X, y, test_size = 0.33):
 		for train_index, test_index in sss:
 				return train_index, test_index
 
+
+
+def test_instances_to_scipy_sparse(feature_space, instances, ignore_groups=[]):
+    X = scipy.sparse.lil_matrix((len(self.instances), len(feature_space)))
+    Y = []
+    keys = set(feature_space.keys())
+    for i in range(len(self.instances)):
+        for f_group, features in self.instances[i].feature_groups.iteritems():
+            if f_group in ignore_groups:
+                continue
+            for f in features:
+            		if f.name in keys:
+                		X[i, feature_space[f.name]] =  f.value
+
+        Y.append(self.instances[i].target_class)
+    logging.info("%d Instances loaded with %d features" %(X.shape[0], X.shape[1]))
+    return scipy.sparse.csr_matrix(X), np.array(Y)      
+
+
     
 def main():
 		parser = argparse.ArgumentParser(description='build classifier')
-		subparsers = parser.add_subparsers(dest='subparser_name' ,help='sub-command help')
 
-		parser_cv = subparsers.add_parser('cv', help='perform cross validation')
-		parser_cv.add_argument('--folds', type=int, default = 5, required=False, help='number of folds')
-		parser_cv.add_argument('--data_folder',  required=True, help='file to pickled instances')
+		parser.add_argument('--train',  required=True, help='file to pickled training instances')
+		parser.add_argument('--test',  required=False, help='file to pickled test instances')
+		parser.add_argument('--action',  required=True, help='what analysis do you want to run')
 
-
-		parser_grid = subparsers.add_parser('grid', help='perform CV grid search')
-		parser_grid.add_argument('--folds', type=int, default = 5, required=False, help='number of folds')
-		parser_grid.add_argument('--data_folder',  required=True, help='file to pickled instances')
-
-		parser_roc = subparsers.add_parser('roc', help='perform CV grid search')
-		parser_roc.add_argument('--folds', type=int, default = 5, required=False, help='number of folds')
-		parser_roc.add_argument('--data_folder',  required=True, help='file to pickled instances')
-
-		parser_feat = subparsers.add_parser('features', help='perform CV grid search')
-		parser_feat.add_argument('--data_folder',  required=True, help='file to pickled instances')
 
 		args = parser.parse_args()    
-		logging.info("Start deserializing")
-		instances = classifier.load_instances(args.data_folder)
-		pipe = Pipe( instances=instances)
-		logging.info("Start loading X, Y")
-		X,y,space = pipe.instances_to_scipy_sparse()
 		
 
-		if args.subparser_name =="cv":
-				#do_cv(X, y, args.folds)
-				error_analysis_for_labeling(instances, X, y, args.folds, args.data_folder)
+		if args.test:
+				logging.info("Start deserializing")
+				train_instances = classifier.load_instances(args.train)
+				test_instances = classifier.load_instances(args.test)
+				pipe = Pipe( instances=train_instances)
+				logging.info("Start loading X, Y")
+				X_train, y_train, feature_space = pipe.instances_to_scipy_sparse()
+				X_test, y_test = test_instances_to_scipy_sparse(feature_space, test_instances)
 
-		elif args.subparser_name =="grid":
-				do_grid_search(instances, X, y, args.folds)
 
-		elif args.subparser_name == "roc":
-				do_roc(X, y, args.folds)
- 
+		else:
+				logging.info("Start deserializing")
+				instances = classifier.load_instances(args.train)
+				pipe = Pipe( instances=instances)
+				logging.info("Start loading X, Y")
+				X, y, feature_space = pipe.instances_to_scipy_sparse()
+				train, test =  split_data_stratified(X, y, test_size = 0.33)
+				X_train = X[train]
+				X_test = X[test]
+				y_train = y[train]
+				y_test = y[test]
+
+
+		
+
+		#if args.action =="error":
+		#		error_analysis_for_labeling(train_instances, test_instances, X_train, y_train, X_test, y_test)
+
+		if args.action =="grid":
+				do_grid_search(X_train, y_train, X_test, y_test)
+
+	
  		elif args.subparser_name == "features":
- 				do_feature_selection(X, y)
- 				#do_feature_set_analysis(pipe, X, y)
+ 				#do_feature_selection(X, y)
+ 				do_feature_set_analysis(train_instances, test_instances)
 
 
 

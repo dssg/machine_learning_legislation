@@ -76,10 +76,10 @@ class wikipedia_categories_feature_generator:
         """
         if not self.force and instance.feature_groups.has_key(self.name):
             return
-        page_title = self.entity_id_to_wikipage(instance.attributes["id"])
-        #page_title = self.entity_text_to_wikipage(instance.attributes["entity_text"])
-        print "TEXT: ", instance.attributes["entity_text"]
-        print "WIKI PAGE:",  page_title
+        #page_title = self.entity_id_to_wikipage(instance.attributes["id"])
+        page_title = self.entity_text_to_wikipage(instance.attributes["entity_inferred_name"])
+        logging.debug("TEXT: %s" % instance.attributes["entity_inferred_name"])
+        logging.debug( "WIKI PAGE: %s" % page_title)
         instance.feature_groups[self.name] = []
         if page_title:
             instance.attributes["matching_wiki_page"] = page_title
