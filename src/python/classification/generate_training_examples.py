@@ -86,7 +86,7 @@ def get_candiadte_negative_examples_from_db( congress = 111, count=10000 ):
         and documents.congress_meta_document = cmd.id
         and e.source = 'table'
         and cmd.congress = %s
-        and e.id not in (select distinct matched_entity_id from earmark_document_matched_entities)
+        and not exists (select matched_entity_id from earmark_document_matched_entities where e.id = matched_entity_id)
         group by e.entity_inferred_name
         ) as vu 
         order by r limit %s
