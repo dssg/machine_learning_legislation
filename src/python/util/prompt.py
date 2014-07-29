@@ -30,3 +30,22 @@ def query_yes_no(question, default="yes"):
         else:
             sys.stdout.write("Please respond with 'yes' or 'no' "
                              "(or 'y' or 'n').\n")
+
+def query_number(question):
+    """Ask a yes/no question via raw_input() and return their answer.
+
+    "question" is a string that is presented to the user.
+    "default" is the presumed answer if the user just hits <Enter>.
+        It must be "yes" (the default), "no" or None (meaning
+        an answer is required of the user).
+
+    The "answer" return value is one of "yes" or "no".
+    """
+    while True:
+        sys.stdout.write(question + prompt)
+        choice = raw_input().lower()
+        try:
+            value = int(choice)
+            return value
+        except:
+            sys.stdout.write("Please respond with a number\n")
