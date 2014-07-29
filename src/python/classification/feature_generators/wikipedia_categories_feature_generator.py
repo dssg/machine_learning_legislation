@@ -44,6 +44,31 @@ class wikipedia_categories_feature_generator:
             raise exp
         finally:
             conn.close()
+
+
+    def entity_text_to_wikipage (self, entity_text):
+        """
+        given an entity text, returns the corresponding wikipedia page.
+        if no page is found, None returned
+        """
+        conn = psycopg2.connect(self.CONN_STRING)
+        try:
+            cmd = "select wikipedia_page from entity_wikipedia_page where entity_text = %s"
+            cur = conn.cursor()
+            cur.execute(cmd, (entity_text,))
+            result = cur.fetchone()
+            print result
+            if result and len(result) > 0:
+                return result[0]
+            else:
+                return None
+        except Exception as exp:
+            conn.rollback()
+            print exp
+            raise exp
+        finally:
+            conn.close()
+
             
     def operate(self, instance):
         """
@@ -52,6 +77,9 @@ class wikipedia_categories_feature_generator:
         if not self.force and instance.feature_groups.has_key(self.name):
             return
         page_title = self.entity_id_to_wikipage(instance.attributes["id"])
+        #page_title = self.entity_text_to_wikipage(instance.attributes["entity_text"])
+        print "TEXT: ", instance.attributes["entity_text"]
+        print "WIKI PAGE:",  page_title
         instance.feature_groups[self.name] = []
         if page_title:
             instance.attributes["matching_wiki_page"] = page_title
