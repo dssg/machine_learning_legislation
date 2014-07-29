@@ -29,8 +29,12 @@ from time import time
 from sklearn.feature_selection import SelectPercentile, chi2
 
 from util.matching import bcolors
+from util.prompt import query_yes_no
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
+
+
+
 
 
 
@@ -44,7 +48,7 @@ def do_cv(X, y, folds=5, C=1.0):
 		print("ROC_AUC: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
 
 
-def error_analysis_for_labeling(instances, X, y, folds):
+def error_analysis_for_labeling(instances, X, y, folds, data_folder):
 	clf = svm.LinearSVC(C=0.1)
 	cv = cross_validation.StratifiedKFold(y, n_folds=folds, random_state = 0)
 	for i, (train, test) in enumerate(cv):
@@ -54,6 +58,7 @@ def error_analysis_for_labeling(instances, X, y, folds):
 				print("\nROC score on Test Data")
 				print roc_auc_score( y[test], scores)
 				do_error_analysis (y[test], y_pred, scores, test, instances)
+				#relabel(y[test], y_pred, scores, test, instances, data_folder)
 				print "\n"*5
 
 
@@ -188,21 +193,15 @@ def do_feature_set_analysis(pipe, X, y):
 
 	for g in groups:
 			keep_groups = copy.copy(opt_groups)
-
 			keep_groups.add(g)
 			print keep_groups
 			X,y,space = pipe.instances_to_scipy_sparse(ignore_groups = groups.difference(keep_groups))
-
 			model = get_model_with_optimal_C (X[train], y[train])
-
 			scores =  model.decision_function(X[test])
 			fpr, tpr, thresholds = roc_curve(y[test], scores)
-
 			roc_auc = auc(fpr, tpr)
 			plt.plot(fpr, tpr, lw=1, label='%s  (area = %0.2f)' % (g.split("_")[0], roc_auc))
 			print "\n"*4
-
-
 	plt.plot([0, 1], [0, 1], '--', color=(0.6, 0.6, 0.6), label='Luck')
 
 	
@@ -214,6 +213,37 @@ def do_feature_set_analysis(pipe, X, y):
 	plt.legend(loc="lower right")
 	plt.savefig('features.png')
 
+
+
+
+
+def relabel(y_true, y_pred, scores, test_index, instances, data_folder, num = 20):
+	false_positives = np.logical_and(y_true==0, y_pred==1).nonzero()[0]
+
+	if false_positives.size == 0:
+		return
+
+
+	fp_instances = [(test_index[i], scores[i]) for i in np.nditer(false_positives)]
+	print len(fp_instances)
+	fp_instances = sorted(fp_instances[:num], key = lambda x: x[0])
+	
+
+	modified_ids = []
+
+	for t in fp_instances[:num]:
+		instance = instances[t[0]]
+		is_earmark = query_yes_no(instance.attributes['entity_inferred_name'])
+		if is_earmark:
+			instance.target_class = 1
+			modified_ids.append(instance.attributes['id'])
+
+	print modified_ids
+
+	classifier.serialize_instances(instances, data_folder)
+
+	print modified_ids
+			
 
 
 
@@ -237,7 +267,6 @@ def do_error_analysis(y_true, y_pred, scores, test_index, instances, num = 1000)
 			print "False Positives:"
 			print len(fp_entities)
 			for t in sorted(fp_entities[:num], key = lambda x: x[1]):
-					#str(t[1])
 					print template.format (t[0]['id'], t[0]['document_id'], bcolors.OKGREEN + t[0]['entity_inferred_name'] + bcolors.ENDC) 
 
 	print "\n"*5
@@ -280,8 +309,6 @@ def split_data_stratified(X, y, test_size = 0.33):
 		for train_index, test_index in sss:
 				return train_index, test_index
 
-def serialize_instances(instances, outfile):
-    pickle.dump(instances, open(outfile,'wb'))
     
 def main():
 		parser = argparse.ArgumentParser(description='build classifier')
@@ -313,7 +340,7 @@ def main():
 
 		if args.subparser_name =="cv":
 				#do_cv(X, y, args.folds)
-				error_analysis_for_labeling(instances, X, y, args.folds)
+				error_analysis_for_labeling(instances, X, y, args.folds, args.data_folder)
 
 		elif args.subparser_name =="grid":
 				do_grid_search(instances, X, y, args.folds)
