@@ -110,6 +110,8 @@ def crete_new_earmark(entity_id, year):
         conn.rollback()
     finally:
         conn.close()
+        
+
     
 def main():
     parser = argparse.ArgumentParser(description='amend earmarks and their matching')
