@@ -56,9 +56,7 @@ def error_analysis_for_labeling(instances, X, y, folds, data_folder):
 
 
 
-def do_grid_search(X_train, y_train, X_test, y_test):
-
-		train, test = split_data_stratified(X,y)
+def do_grid_search(X_train, y_train, X_test, y_test, folds):
 		model = get_model_with_optimal_C (X_train, y_train, folds)
 		scores = model.decision_function(X_test)
 		print("\nROC score on Test Data")
@@ -68,7 +66,7 @@ def do_grid_search(X_train, y_train, X_test, y_test):
 
 
 
-def get_model_with_optimal_C (X, y, folds = 5):
+def get_model_with_optimal_C (X, y, folds):
 		param_grid = {'C': [ 0.001, 0.01, 0.1, 0.5, 1, 4, 10, 100]}
 		svr = svm.LinearSVC()
 
@@ -134,9 +132,9 @@ def do_feature_selection(X, y):
 
 
 
-def do_feature_set_analysis(train_instances, test_instances):
+def do_feature_set_analysis(train_instances, test_instances, folds):
 
-	groups = set(['unigram_feature_generator','bigram_feature_generator', 'geo_feature_generator', 'simple_entity_text_feature_generator'])
+	groups = set(['unigram_feature_generator', 'geo_feature_generator', 'simple_entity_text_feature_generator'])
 
 	
 	opt_groups = set()
@@ -147,7 +145,7 @@ def do_feature_set_analysis(train_instances, test_instances):
 	X_test, y_test = test_instances_to_scipy_sparse(feature_space, test_instances)
 
 
-	model = get_model_with_optimal_C (X_train, y_train)
+	model = get_model_with_optimal_C (X_train, y_train, folds)
 	raw =  model.decision_function(X_test)	
 	fpr, tpr, thresholds = roc_curve(y_test, raw)
 	roc_auc = auc(fpr, tpr)
@@ -166,7 +164,7 @@ def do_feature_set_analysis(train_instances, test_instances):
 			X_test, y_test = test_instances_to_scipy_sparse(feature_space, test_instances)
 
 
-			model = get_model_with_optimal_C (X_train, y_train)
+			model = get_model_with_optimal_C (X_train, y_train, folds)
 			scores =  model.decision_function(X_test)
 			fpr, tpr, thresholds = roc_curve(y_test, scores)
 			roc_auc = auc(fpr, tpr)
@@ -282,18 +280,18 @@ def split_data_stratified(X, y, test_size = 0.33):
 
 
 def test_instances_to_scipy_sparse(feature_space, instances, ignore_groups=[]):
-    X = scipy.sparse.lil_matrix((len(self.instances), len(feature_space)))
+    X = scipy.sparse.lil_matrix((len(instances), len(feature_space)))
     Y = []
     keys = set(feature_space.keys())
-    for i in range(len(self.instances)):
-        for f_group, features in self.instances[i].feature_groups.iteritems():
+    for i in range(len(instances)):
+        for f_group, features in instances[i].feature_groups.iteritems():
             if f_group in ignore_groups:
                 continue
             for f in features:
             		if f.name in keys:
                 		X[i, feature_space[f.name]] =  f.value
 
-        Y.append(self.instances[i].target_class)
+        Y.append(instances[i].target_class)
     logging.info("%d Instances loaded with %d features" %(X.shape[0], X.shape[1]))
     return scipy.sparse.csr_matrix(X), np.array(Y)      
 
@@ -305,46 +303,83 @@ def main():
 		parser.add_argument('--train',  required=True, help='file to pickled training instances')
 		parser.add_argument('--test',  required=False, help='file to pickled test instances')
 		parser.add_argument('--action',  required=True, help='what analysis do you want to run')
+		parser.add_argument('--folds',  required=False, type = int, default = 5, help='number of folds for cv')
+
+
 
 
 		args = parser.parse_args()    
 		
 
-		if args.test:
-				logging.info("Start deserializing")
-				train_instances = classifier.load_instances(args.train)
-				test_instances = classifier.load_instances(args.test)
-				pipe = Pipe( instances=train_instances)
-				logging.info("Start loading X, Y")
-				X_train, y_train, feature_space = pipe.instances_to_scipy_sparse()
-				X_test, y_test = test_instances_to_scipy_sparse(feature_space, test_instances)
+		
 
 
-		else:
+		
+
+		if args.action =="error":
+
+				#this does error analysis on training data only!
 				logging.info("Start deserializing")
 				instances = classifier.load_instances(args.train)
 				pipe = Pipe( instances=instances)
 				logging.info("Start loading X, Y")
 				X, y, feature_space = pipe.instances_to_scipy_sparse()
-				train, test =  split_data_stratified(X, y, test_size = 0.33)
-				X_train = X[train]
-				X_test = X[test]
-				y_train = y[train]
-				y_test = y[test]
+				error_analysis_for_labeling(instances, X, y, args.folds, args.train)
 
-
-		
-
-		#if args.action =="error":
-		#		error_analysis_for_labeling(train_instances, test_instances, X_train, y_train, X_test, y_test)
 
 		if args.action =="grid":
-				do_grid_search(X_train, y_train, X_test, y_test)
+
+				if args.test:
+						logging.info("Start deserializing Train")
+						train_instances = classifier.load_instances(args.train)
+						logging.info("Start deserializing Test")
+						test_instances = classifier.load_instances(args.test)
+						pipe = Pipe( instances=train_instances)
+						logging.info("Start loading X, Y")
+						X_train, y_train, feature_space = pipe.instances_to_scipy_sparse()
+						X_test, y_test = test_instances_to_scipy_sparse(feature_space, test_instances)
+
+
+				else:
+						logging.info("Start deserializing")
+						instances = classifier.load_instances(args.train)
+						pipe = Pipe( instances=instances)
+						logging.info("Start loading X, Y")
+						X, y, feature_space = pipe.instances_to_scipy_sparse()
+						train, test =  split_data_stratified(X, y, test_size = 0.33)
+						X_train = X[train]
+						X_test = X[test]
+						y_train = y[train]
+						y_test = y[test]
+
+				do_grid_search(X_train, y_train, X_test, y_test, args.folds)
 
 	
- 		elif args.subparser_name == "features":
+
+
+ 		elif args.action == "features":
+
+				if args.test:
+						logging.info("Start deserializing")
+						train_instances = classifier.load_instances(args.train)
+						test_instances = classifier.load_instances(args.test)
+					
+				else:
+						logging.info("Start deserializing")
+						instances = classifier.load_instances(args.train)
+						pipe = Pipe( instances=instances)
+						logging.info("Start loading X, Y")
+						X, y, feature_space = pipe.instances_to_scipy_sparse()
+						train, test =  split_data_stratified(X, y, test_size = 0.33)
+
+						train_instances = [instances[i] for i in train]
+						test_instances = [instances[i] for i in test]
+
+
+						
+
  				#do_feature_selection(X, y)
- 				do_feature_set_analysis(train_instances, test_instances)
+ 				do_feature_set_analysis(train_instances, test_instances, args.folds)
 
 
 
