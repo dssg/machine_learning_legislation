@@ -85,7 +85,7 @@ def get_earmark(earmark_id):
 def get_earmarks(year):
     conn = psycopg2.connect(CONN_STRING)
 
-    columns = ["earmark_id", "full_description", "short_description", "recipient"]
+    columns = ["earmark_id", "coalesce(full_description,'')", "coalsce(short_description,'')", "coalesce(recipient,'')"]
     cmd = "select "+", ".join(columns)+" from earmarks where enacted_year = "+str(year)
 
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
@@ -97,16 +97,13 @@ def get_earmarks(year):
     #print "number of earmarks", len(earmarks)
 
 
-def get_earmark_docs(earmark_id, redo):
+def get_earmark_docs(earmark_id):
     """
     given earmark id, return list of all docs that map to this earmark
     """
     conn = psycopg2.connect(CONN_STRING)
     columns = ["document_id"]
-    if not redo:
-        cmd = "select "+", ".join(columns)+" from earmark_documents where earmark_id = %s and matched_entity_id is Null"
-    else:
-        cmd = "select "+", ".join(columns)+" from earmark_documents where earmark_id = %s" 
+    cmd = "select "+", ".join(columns)+" from earmark_documents where earmark_id = %s" 
 
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
     cur.execute(cmd, (earmark_id,))
@@ -190,14 +187,9 @@ def update_earmark_offsets (earmark_id, matches):
     conn.close()
 
 
-def process_earmark(earmark_redo_update_triple):
-    earmark = earmark_redo_update_triple[0]
-    redo = True
-    if len(earmark_redo_update_triple) > 1 :
-        redo = earmark_redo_update_triple[1]
-    update = True
-    if len(earmark_redo_update_triple) > 2 :
-        update = earmark_redo_update_triple[2]
+def process_earmark(earmark_update_pair):
+    earmark = earmark_update_pair[0]
+    update = earmark_update_pair[2]
     
 
     out_str = []
@@ -205,15 +197,19 @@ def process_earmark(earmark_redo_update_triple):
     normalized_short_desc = normalize(earmark['short_description'])
     normalized_full_desc = normalize(earmark['full_description'])
     normalized_recipient = normalize(earmark['recipient'])
+    print normalized_full_desc
     fd_shingles = shinglize(normalized_full_desc, 2)
     sd_shingles = shinglize(normalized_short_desc, 2)
     r_shingles = shinglize(normalized_recipient, 2)
+
+
     desc_short_matches=set()
     excerpt_matches =set()
     desc_full_matches =set()
     matches = {}
-    docs = get_earmark_docs(earmark['earmark_id'], redo)
+    docs = get_earmark_docs(earmark['earmark_id'])
     for doc_id in docs:
+        print doc_id
         matches[doc_id] = []
         out_str.append(str(doc_id))
         #print path_tools.doc_id_to_path(doc_id)
@@ -224,12 +220,12 @@ def process_earmark(earmark_redo_update_triple):
             #if normalized_entity_text in earmarks_blacklist or \
             if normalized_entity_inferred_name in earmarks_blacklist:
                 continue
-                
+            #print "Entity Inferred Name",  doc_entity['id'], normalized_entity_inferred_name
             #e_text_shingles = shinglize(normalized_entity_text, 2)
             e_name_shingles = shinglize(normalized_entity_inferred_name, 2)
             
             #lst_entities = [e_text_shingles, e_name_shingles]
-            lst_entities = [e_name_shingles]
+            lst_entities = [e_name_shingles,]
             lst_txt = [fd_shingles, sd_shingles, r_shingles] #excerpt_shingles
             
             
@@ -275,11 +271,9 @@ def main():
     parser_m.add_argument('--year', required=True, type=int, help='which year to match')
     parser_m.add_argument('--threads', type=int, default = 8, help='number of threads to run in parallel')
     parser_m.add_argument('--update', action='store_true',default = False,  help = 'record matches in db')
-    parser_m.add_argument('--redo', action='store_true', default = False, help = 'if an entity is matched, dont redo')
     parser_m.add_argument('--num', type=int, default=-1, help='number of examples to check')
 
 
-    parser_d.add_argument('--entity', required = True, type = int)
     parser_d.add_argument('--earmark', required = True, type = int)
 
 
@@ -289,14 +283,13 @@ def main():
 
     if args.subparser_name == "match":
 
-        redo = args.redo
         update = args.update
 
         earmarks = get_earmarks(args.year)
         if args.num > -1:
             earmarks = earmarks[:args.num]
         p = mp.Pool(args.threads)
-        results = p.map(process_earmark, [(earmark, redo, update) for earmark in earmarks])
+        results = p.map(process_earmark, [(earmark, update) for earmark in earmarks])
 
         matches = [ t[1] for t in results]
         for r in results:
@@ -308,7 +301,7 @@ def main():
         print "Accuracy: ", accuracy
 
     else:
-        print process_earmark(get_earmark(args.earmark))
+        print process_earmark((get_earmark(args.earmark), True, False))
 
 
     
