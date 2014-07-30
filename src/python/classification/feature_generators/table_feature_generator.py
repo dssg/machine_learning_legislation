@@ -28,13 +28,10 @@ class table_feature_generator:
             cur.execute(sql, params)
             content = cur.fetchone()
             if content:
-                #s = StringIO()
-                #raw = StringIO(content)
-                #s.write(content)
                 self.paragraphs = ttt.get_paragraphs_from_string(content[0])
                 return ttt.identify_tables(self.paragraphs)[0]
             else:
-                return Table()
+                return ttt.Table()
         except Exception as exp:
             conn.rollback()
             print exp
@@ -50,6 +47,7 @@ class table_header_feature_generator:
         self.no_header_feature = "NO_HEADERS_FOUND"
 
     def operate(self, instance):
+        logging.debug("Enter table headers.")
         if not self.force and instance.feature_groups.has_key(self.name):
             return
         entity_id = instance.attributes["id"]
@@ -96,6 +94,7 @@ class table_is_first_table_feature_generator:
         self.force = kwargs.get("force", True)
 
     def operate(self, instance):
+        logging.debug("Enter is first table.")
         if not self.force and instance.feature_groups.has_key(self.name):
             return
         entity_id = instance.attributes["id"]
@@ -141,16 +140,23 @@ class row_contains_president_feature_generator(table_feature_generator):
         self.force = kwargs.get("force", True)
 
     def operate(self, instance):
+        logging.debug("Enter row contains president.")
         if not self.force and instance.feature_groups.has_key(self.name):
             return
         entity_id = instance.attributes["id"]
         table = self.get_entity_table(entity_id)
-        entity_row = [row for row in table.rows if instance.attributes["entity_text"] in row.raw_text][0]
         instance.feature_groups[self.name] = []
-        if "president" in entity_row.raw_text.lower():
-            instance.feature_groups[self.name].append(Feature("PRESIDENT_IN_ROW", 1, self.name))
+        for row in table.rows:
+            pass #print "Entity: %s (%s) .\n\n Row: %s" % (instance.attributes["entity_text"], instance.attributes["id"], row.raw_text)
+        entity_row = [row for row in table.rows if [cell for cell in row.cells if instance.attributes["entity_text"] in cell.clean_text]]
+        if entity_row:
+            row = entity_row[0]
+            if "president" in row.raw_text.lower():
+                instance.feature_groups[self.name].append(Feature("PRESIDENT_IN_ROW", 1, self.name))
+            else:
+                instance.feature_groups[self.name].append(Feature("PRESIDENT_IN_ROW", 0, self.name))
+
+            logging.debug( "Feature count for entity id: %d after %s" %(instance.attributes["id"], self.name))
         else:
             instance.feature_groups[self.name].append(Feature("PRESIDENT_IN_ROW", 0, self.name))
-
-        logging.debug( "Feature count for entity id: %d after %s" %(instance.attributes["id"], self.name))
 
