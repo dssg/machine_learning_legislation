@@ -136,7 +136,7 @@ def find_best_string_match(matches):
     """
     diff = [x for x in list(matches)  ]
     sorted_desc_entities = sorted(diff, key=len, reverse=True)
-    print   sorted_desc_entities[:10] 
+    print   sorted_desc_entities 
     if len(sorted_desc_entities) > 0:
         return sorted_desc_entities[0]
     
@@ -197,7 +197,6 @@ def process_earmark(earmark_update_pair):
     normalized_short_desc = normalize(earmark['short_description'])
     normalized_full_desc = normalize(earmark['full_description'])
     normalized_recipient = normalize(earmark['recipient'])
-    print normalized_full_desc
     fd_shingles = shinglize(normalized_full_desc, 2)
     sd_shingles = shinglize(normalized_short_desc, 2)
     r_shingles = shinglize(normalized_recipient, 2)
@@ -209,7 +208,6 @@ def process_earmark(earmark_update_pair):
     matches = {}
     docs = get_earmark_docs(earmark['earmark_id'])
     for doc_id in docs:
-        print doc_id
         matches[doc_id] = []
         out_str.append(str(doc_id))
         #print path_tools.doc_id_to_path(doc_id)
@@ -220,7 +218,6 @@ def process_earmark(earmark_update_pair):
             #if normalized_entity_text in earmarks_blacklist or \
             if normalized_entity_inferred_name in earmarks_blacklist:
                 continue
-            #print "Entity Inferred Name",  doc_entity['id'], normalized_entity_inferred_name
             #e_text_shingles = shinglize(normalized_entity_text, 2)
             e_name_shingles = shinglize(normalized_entity_inferred_name, 2)
             
