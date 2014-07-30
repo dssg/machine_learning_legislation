@@ -85,7 +85,7 @@ def get_earmark(earmark_id):
 def get_earmarks(year):
     conn = psycopg2.connect(CONN_STRING)
 
-    columns = ["earmark_id", "coalesce(full_description,'')", "coalsce(short_description,'')", "coalesce(recipient,'')"]
+    columns = ["earmark_id", "coalesce(full_description,'') as full_description", "coalesce(short_description,'') as short_description", "coalesce(recipient,'') as recipient"]
     cmd = "select "+", ".join(columns)+" from earmarks where enacted_year = "+str(year)
 
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
@@ -189,7 +189,7 @@ def update_earmark_offsets (earmark_id, matches):
 
 def process_earmark(earmark_update_pair):
     earmark = earmark_update_pair[0]
-    update = earmark_update_pair[2]
+    update = earmark_update_pair[1]
     
 
     out_str = []
