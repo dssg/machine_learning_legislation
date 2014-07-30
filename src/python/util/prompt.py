@@ -42,7 +42,7 @@ def query_number(question):
     The "answer" return value is one of "yes" or "no".
     """
     while True:
-        sys.stdout.write(question + prompt)
+        sys.stdout.write(question)
         choice = raw_input().lower()
         try:
             value = int(choice)
