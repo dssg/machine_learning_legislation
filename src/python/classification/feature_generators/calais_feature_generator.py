@@ -28,27 +28,25 @@ def extract_entities(text):
     calaises = [Calais(key, submitter="python-calais-demo") for key in API_KEYS]
     entities = []
     calais = calaises[ random.randint(0, len(calaises)-1 ) ]
-    result = calais.analyze(text)
     try:
+        result = calais.analyze(text)
         for calais_entity in result.entities:
             e_type = calais_entity['_type']
             entities.append(e_type)
-        return entities
     except:
-        return []
+        logging.exception("failed while calling calais")
+
+    return entities
 
 def calais_feature_dict(extracted_entities):
     """
     Input: list of extracted entities
     Ouput: dictionary of calais entities, count values
     """
-    unique_entities = set(extracted_entities)
     feature_dict = dict()
     for item in extracted_entities:
-        if item not in feature_dict:
-            feature_dict[item]=1
-        else:
-            feature_dict[item]=feature_dict[item]+1
+        feature_dict[item] = feature_dict.get(item, 0)+1
+
     return feature_dict
 
 def politicians_names():
@@ -90,7 +88,7 @@ class politician_calais_feature_generator:
     def __init__(self, **kwargs):
         self.name = "politician_calais_feature_generator"
         self.force = kwargs.get("force", True)
-        self.feature_prefix = "PERSON-CALAIS_FEAUTURE_"
+        self.feature_prefix = "CALAIS_FEAUTURE_"
         self.lname,self.lname_upper,self.fname,self.fname_upper = politicians_names()
 
     def operate(self,instance):
@@ -104,9 +102,10 @@ class politician_calais_feature_generator:
         text = instance.attributes["entity_inferred_name"]
         calais_dict = calais_feature_dict(extract_entities(text))
         for key in calais_dict.keys():
-            FEATURE_STRING = "PERSON-CALAIS_FEAUTURE_calais_" + str(key)
+            FEATURE_STRING = self.feature_prefix + str(key)
             count_value = calais_dict[key]
             instance.feature_groups[self.name].append(Feature(FEATURE_STRING, count_value,self.name))
         poli_feature = politicians_feature(text,self.lname,self.lname_upper,self.fname,self.fname_upper)
-        instance.feature_groups[self.name].append(Feature('POLITICIAN-CALAIS_FEATURE_politician',poli_feature,self.name))
+        if poli_feature:
+            instance.feature_groups[self.name].append(Feature('POLITICIAN-CALAIS_FEATURE_politician',poli_feature,self.name))
         logging.debug( "Feature count %d for entity id: %d after %s" %(instance.feature_count(),instance.attributes["id"], self.name))
