@@ -121,7 +121,7 @@ def do_feature_selection(X, y):
 
 def do_feature_set_analysis(train_instances, test_instances, folds):
 
-	groups = set(['unigram_feature_generator', 'geo_feature_generator', 'simple_entity_text_feature_generator'])
+	groups = set(['unigram_feature_generator', 'geo_feature_generator', 'simple_entity_text_feature_generator','politician_calais_feature_generator'])
 
 	
 	opt_groups = set()
