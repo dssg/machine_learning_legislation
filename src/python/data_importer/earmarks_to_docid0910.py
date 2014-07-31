@@ -8,8 +8,7 @@ from util import path_tools, path_to_docid
 import pandas as pd, numpy as np, csv
 import re, time,sys, itertools
 from collections import Counter
-reload(sys)
-sys.setdefaultencoding('utf-8')
+
 
 
 def docname_normalizer09(doc_name):
@@ -96,7 +95,7 @@ def docname_normalizer10(doc_name):
                 return path 
                 
         
-def csv_extractor(earmarks,year=2010):
+def csv_extractor_09_10(path, year=2010):
     """
     Input: 2010 or 2009 earmark csvs, year
     Output: a list of lists where each element contains 
@@ -112,7 +111,7 @@ def csv_extractor(earmarks,year=2010):
              'c_f_cttn_reference_name' : ['c_f_cttn_location','c_f_cttn_excerpt']
                  }
     
-    columns = []
+    
     earmarks_lis = []
     unis = []
     if year == 2010:
@@ -120,29 +119,28 @@ def csv_extractor(earmarks,year=2010):
     else:
         normalizer = docname_normalizer09
     
-    csvFile = csv.reader(earmarks)
-    for rows in csvFile:
-        if not columns: 
-            columns = rows
-            doc_index = [columns.index(i) for i in document_columns]
-            metaData_index = {}
-            for ind, item in enumerate(doc_index):
-                metaData_index[item] = [columns.index(j) for j in meta_data[document_columns[ind]]]
+    csvFile = csv.reader(open(path, 'r'))
+    
+    columns = csvFile.next()
+    doc_index = [columns.index(i) for i in document_columns]
+    metaData_index = {}
+    for ind, item in enumerate(doc_index):
+        metaData_index[item] = [columns.index(j) for j in meta_data[document_columns[ind]]]
+    earmarkid_index = columns.index('earmark_id')
 
-            earmarkid_index = columns.index('earmark_id')
-        else:
-            for name in doc_index:
-                doc_name = rows[name]
-                earmark_id = rows[earmarkid_index]
-                unis_info = (earmark_id, doc_name)
-                if doc_name and not unis_info in unis:
-                    page = rows[metaData_index[name][0]]
-                    excerpt = rows[metaData_index[name][1]]
-                    docS_name = normalizer(doc_name)
-                    if docS_name:
-                        db_info = (earmark_id, docS_name, page, excerpt)
-                        earmarks_lis.append(db_info)
-                        unis.append(unis_info)
+    for rows in csvFile:
+        for name in doc_index:
+            doc_name = rows[name]
+            earmark_id = rows[earmarkid_index]
+            unis_info = (earmark_id, doc_name)
+            if doc_name and not unis_info in unis:
+                page = rows[metaData_index[name][0]]
+                excerpt = rows[metaData_index[name][1]]
+                docS_name = normalizer(doc_name)
+                if docS_name:
+                    db_info = (earmark_id, docS_name, page, excerpt)
+                    earmarks_lis.append(db_info)
+                    unis.append(unis_info)
         
     return earmarks_lis
         

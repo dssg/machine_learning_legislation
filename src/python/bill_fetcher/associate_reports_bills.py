@@ -90,7 +90,8 @@ def get_full_bill_dir(bill_name):
 
 def main():
     # for each congress
-    congresses = ["108", "109", "110", "111"]
+    #congresses = ["108", "109", "110", "111"]
+    congresses = ['111', ]
     for congress in congresses:
         path = os.path.join(root_dir, congress, "house")
         get_reports(path, congress)

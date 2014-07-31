@@ -7,8 +7,6 @@ import re, time, csv
 import toDatabase as td
 import itertools 
 from collections import Counter
-reload(sys)
-sys.setdefaultencoding('utf-8')
 
 def doc_normalizer08(doc_name):
     """
@@ -41,12 +39,12 @@ def doc_normalizer08(doc_name):
     return path 
             
 
-def csv_extractor08(earmarks, year=2008):
+def csv_extractor08(path):
     """
     Input: csv file for 2008 records
     Output: relevant database information 
     """
-    csvFile = csv.reader(earmarks)
+    csvFile = csv.reader(open(path))
     document_columns = ['EARMARK_ID','CITATION_REFERENCE', 'CITATION_LOCATOR','CITATION_EXCERPT']
     columns = []
     earmarks_lis = []
@@ -183,12 +181,12 @@ def doc_normalizer05(doc_name):
             
 
 
-def csv_extractor05(earmarks):
+def csv_extractor_05(path):
     """
     Input: csv file for 2005 records (altered using OpenRefine)
     Output: relevant database information
     """
-    csvFile = csv.reader(earmarks)
+    csvFile = csv.reader(open(path))
     document_columns = ['earmark_id', 'Citation Reference', 'Citation Locator', 'Citation Excerpt']
     columns = []
     earmarks_lis = []
