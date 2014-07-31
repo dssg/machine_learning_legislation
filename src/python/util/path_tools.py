@@ -1,6 +1,8 @@
 import os, sys
 import json
 import traceback
+import codecs
+
 
 class BillPathUtils:
     
@@ -204,6 +206,21 @@ def doc_id_to_path(doc_id):
         raise ex
     finally:
         conn.close()
+
+def get_report_date(document_id):
+    """
+    document_id: document id of a report only
+    """
+    from bs4 import BeautifulSoup
+    path = doc_id_to_path(document_id)
+    path = path[:path.rfind('/')] + '/mods.xml'
+    with codecs.open(path,'r','utf8') as f:
+        soup = BeautifulSoup(f)
+        return soup.find('mods').find('origininfo').find('dateissued').text.strip()
+
+def get_report_year(document_id):
+    return get_report_date(document_id)[:4]
+    
         
 if __name__=="__main__":
     if len(sys.argv) > 1:
