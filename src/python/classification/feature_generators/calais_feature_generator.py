@@ -30,7 +30,7 @@ def extract_entities(text):
     calais = calaises[ random.randint(0, len(calaises)-1 ) ]
     try:
         result = calais.analyze(text)
-        if result.has_key('entities'):
+        if result.hasattr('entities'):
             for calais_entity in result.entities:
                 e_type = calais_entity['_type']
                 entities.append(e_type)
