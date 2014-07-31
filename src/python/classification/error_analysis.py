@@ -21,25 +21,28 @@ def analyze_entity(entity_id):
         print "Entity %d is flagged as negative example, ignoring" %(entity_id)
         return
     entity = Entity(entity_id)
-    question = "Does this entity look like an earmark?\n%s" %entity.entity_inferred_name
+    question = "Does this entity look like an earmark?\n%s\nId: %d\nPath: %s\n" %(entity.entity_inferred_name, entity_id, path_tools.doc_id_to_path(entity.document_id))
     is_earmark = prompt.query_yes_no(question, default="yes")
     if is_earmark:
-        question = "Does it match an earmark on OMB website?\nPath:%s"%(path_tools.doc_id_to_path(entity.document_id))
+        question = "Does it match an earmark on OMB website?\n"
         is_match = prompt.query_yes_no(question, default="yes")
         if is_match:
-            question = "What is the earmark id?"
+            question = "What is the earmark id?\n"
             earmark_id = prompt.query_number(question)
             amend_earmark.match_earmark_with_entity(earmark_id, entity.id)
         else:
-            question = "Are you sure you want to create new earmark?"
+            question = "Are you sure you want to create new earmark?\n"
             if prompt.query_yes_no(question, default="yes"):
-                question = "Please enter a year for the earmark?"
-                year = prompt.query_number(question)
+                #question = "Please enter a year for the earmark?\n"
+                year = path_tools.get_report_year(entity.document_id) #prompt.query_number(question)
                 amend_earmark.crete_new_earmark(entity.id, year)
     else:
         # it is not an earmark, now flag it as negative
-        amend_earmark.insert_entity_to_negative_table(entity_id)
-        print "Entity %d has been labeled as negative example" %(entity_id)
+        question = "Do you want to flag it as negative match?\n"
+        if prompt.query_yes_no(question, default="yes"):
+            amend_earmark.insert_entity_to_negative_table(entity_id)
+            print "Entity %d has been labeled as negative example" %(entity_id)
+    print chr(27) + "[2J" # this clears the terminal
                 
 def entity_is_earmark(entity_id):
     cmd = "select earmark_document_id from earmark_document_matched_entities where matched_entity_id = %s"
