@@ -30,7 +30,7 @@ def extract_entities(text):
     calais = calaises[ random.randint(0, len(calaises)-1 ) ]
     try:
         result = calais.analyze(text)
-        if result.hasattr('entities'):
+        if hasattr(result, 'entities'):
             for calais_entity in result.entities:
                 e_type = calais_entity['_type']
                 entities.append(e_type)
@@ -55,7 +55,7 @@ def politicians_names():
     Input: 
     Output: tuple of lists of names 
     """
-    import csv
+    
     names = list(csv.reader(open('/mnt/data/sunlight/misc/legislators.csv','rU')))
     last_name = set([name[0] for name in names])
     first_name = set([name[1] for name in names])
