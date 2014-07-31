@@ -12,6 +12,7 @@ from sklearn.cross_validation import StratifiedKFold
 import scipy
 from dao.Entity import Entity
 from instance import Instance
+import error_analysis
 from pipe import Pipe
 import pickle
 import marshal
@@ -34,25 +35,18 @@ from util.prompt import query_yes_no
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 
 
-
-
-
-
-
-
-
 def error_analysis_for_labeling(instances, X, y, folds, data_folder):
 	clf = svm.LinearSVC(C=0.01)
 	cv = cross_validation.StratifiedKFold(y, n_folds=folds, random_state = 0)
 	for i, (train, test) in enumerate(cv):
-				model = clf.fit(X[train], y[train])
-				y_pred = model.predict(X[test])
-				scores =  model.decision_function(X[test])
-				print("\nROC score on Test Data")
-				print roc_auc_score( y[test], scores)
-				do_error_analysis (y[test], y_pred, scores, test, instances)
-				#relabel(y[test], y_pred, scores, test, instances, data_folder)
-				print "\n"*5
+		model = clf.fit(X[train], y[train])
+		y_pred = model.predict(X[test])
+		scores =  model.decision_function(X[test])
+		print("\nROC score on Test Data")
+		print roc_auc_score( y[test], scores)
+		#do_error_analysis (y[test], y_pred, scores, test, instances)
+		relabel(y[test], y_pred, scores, test, instances, data_folder)
+		print "\n"*5
 
 
 
@@ -88,9 +82,6 @@ def get_model_with_optimal_C (X, y, folds):
 		return model
 
 
-
-
-
 def do_feature_selection(X, y):
 		all_tpr = []
 		train, test = split_data_stratified(X,y)
@@ -123,10 +114,6 @@ def do_feature_selection(X, y):
 		plt.title('Receiver operating characteristic example')
 		plt.legend(loc="lower right")
 		plt.savefig('feature_selection.png')
-
-
-		
-
 		
 		print()
 
@@ -191,32 +178,16 @@ def relabel(y_true, y_pred, scores, test_index, instances, data_folder, num = 20
 	if false_positives.size == 0:
 		return
 
-
 	fp_instances = [(test_index[i], scores[i]) for i in np.nditer(false_positives)]
-	print len(fp_instances)
+	logging.debug("# of false positives %d"% len(fp_instances))
 	fp_instances = sorted(fp_instances[:num], key = lambda x: x[0])
-	
-
-	modified_ids = []
 
 	for t in fp_instances[:num]:
 		instance = instances[t[0]]
-		is_earmark = query_yes_no(instance.attributes['entity_inferred_name'])
-		if is_earmark:
-			instance.target_class = 1
-			modified_ids.append(instance.attributes['id'])
-
-	print modified_ids
-
-	classifier.serialize_instances(instances, data_folder)
-
-	print modified_ids
-			
-
-
-
-
-
+		try:
+		    error_analysis.analyze_entity(instance.attributes['id'])
+		except Exception as ex:
+		    logging.exception("Error while relabeling entity %d" %instance.attributes['id'])
 
 def do_error_analysis(y_true, y_pred, scores, test_index, instances, num = 1000):
 	#print y_true
@@ -269,15 +240,10 @@ def do_error_analysis(y_true, y_pred, scores, test_index, instances, num = 1000)
 				print template.format (t[0]['id'], t[0]['document_id'], bcolors.OKGREEN + t[0]['entity_inferred_name'] + bcolors.ENDC)
 
 
-
-
-
 def split_data_stratified(X, y, test_size = 0.33):
 		sss = StratifiedShuffleSplit(y, 1, test_size=test_size, random_state=0)
 		for train_index, test_index in sss:
 				return train_index, test_index
-
-
 
 def test_instances_to_scipy_sparse(feature_space, instances, ignore_groups=[]):
     X = scipy.sparse.lil_matrix((len(instances), len(feature_space)))
@@ -295,8 +261,6 @@ def test_instances_to_scipy_sparse(feature_space, instances, ignore_groups=[]):
     logging.info("%d Instances loaded with %d features" %(X.shape[0], X.shape[1]))
     return scipy.sparse.csr_matrix(X), np.array(Y)      
 
-
-    
 def main():
 		parser = argparse.ArgumentParser(description='build classifier')
 
@@ -304,18 +268,7 @@ def main():
 		parser.add_argument('--test',  required=False, help='file to pickled test instances')
 		parser.add_argument('--action',  required=True, help='what analysis do you want to run')
 		parser.add_argument('--folds',  required=False, type = int, default = 5, help='number of folds for cv')
-
-
-
-
 		args = parser.parse_args()    
-		
-
-		
-
-
-		
-
 		if args.action =="error":
 
 				#this does error analysis on training data only!
@@ -325,7 +278,6 @@ def main():
 				logging.info("Start loading X, Y")
 				X, y, feature_space = pipe.instances_to_scipy_sparse()
 				error_analysis_for_labeling(instances, X, y, args.folds, args.train)
-
 
 		if args.action =="grid":
 
@@ -354,9 +306,6 @@ def main():
 
 				do_grid_search(X_train, y_train, X_test, y_test, args.folds)
 
-	
-
-
  		elif args.action == "features":
 
 				if args.test:
@@ -374,14 +323,10 @@ def main():
 
 						train_instances = [instances[i] for i in train]
 						test_instances = [instances[i] for i in test]
-
-
 						
 
  				#do_feature_selection(X, y)
  				do_feature_set_analysis(train_instances, test_instances, args.folds)
-
-
 
 
 if __name__=="__main__":

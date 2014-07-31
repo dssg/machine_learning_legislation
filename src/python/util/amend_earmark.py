@@ -70,6 +70,22 @@ def get_max_earmark_id():
     finally:
         conn.close()
 
+def insert_entity_to_negative_table(entity_id):
+    conn = psycopg2.connect(CONN_STRING)
+    try:
+        cmd = """
+        insert into manual_negative_examples (entity_id) values %s
+        """
+        cur = conn.cursor()
+        cur.execute(cmd, (entity_id,))
+        conn.commit()
+    except Exception as ex:
+        logging.exception("Failed to insert into negative_table")
+        conn.rollback()
+    finally:
+        conn.close()
+    
+
 def crete_new_earmark_doc_matching(earmark_id, document_id):
     conn = psycopg2.connect(CONN_STRING)
     try:

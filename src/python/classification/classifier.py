@@ -139,13 +139,13 @@ def main():
     
     parser_serialize = subparsers.add_parser('serialize', help='pickle instances')
     parser_serialize.add_argument('--data_folder', required=True, help='path to output pickled files')
-    parser_serialize.add_argument('--threads', type=int, default = 8, help='number of threads to run in parallel')
+    parser_serialize.add_argument('--threads', type=int, default = mp.cpu_count(), help='number of threads to run in parallel')
     parser_serialize.add_argument('--positivefile', required=True, help='file containing entities identified as earmarks')
     parser_serialize.add_argument('--negativefile',  required=True, help='file containing negative example entities')
 
     parser_add = subparsers.add_parser('add', help='add to pickled instances')
     parser_add.add_argument('--data_folder', required=True, help='path to output pickled files')
-    parser_add.add_argument('--threads', type=int, default = 8, help='number of threads to run in parallel')
+    parser_add.add_argument('--threads', type=int, default = mp.cpu_count(), help='number of threads to run in parallel')
 
 
 
