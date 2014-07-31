@@ -30,9 +30,10 @@ def extract_entities(text):
     calais = calaises[ random.randint(0, len(calaises)-1 ) ]
     try:
         result = calais.analyze(text)
-        for calais_entity in result.entities:
-            e_type = calais_entity['_type']
-            entities.append(e_type)
+        if result.has_key('entities'):
+            for calais_entity in result.entities:
+                e_type = calais_entity['_type']
+                entities.append(e_type)
     except:
         logging.exception("failed while calling calais")
 
@@ -84,7 +85,7 @@ def politicians_feature(text,lname,lname_upper,fname,fname_upper):
     else:
         return 0
 
-class politician_calais_feature_generator:
+class CalaisFeatureGenerator:
     def __init__(self, **kwargs):
         self.name = "politician_calais_feature_generator"
         self.force = kwargs.get("force", True)
