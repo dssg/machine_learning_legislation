@@ -37,6 +37,7 @@ def path_to_docid05(earmark_path):
                 best_date = bill_date
                 best_version = version
         PATH_BILL = bill_path.get_bill_path(congress,number,best_version)
+        doc_id = pt.ReportPathUtils(PATH_BILL).get_db_document_id()
     else:
         if chamber == "senate":
             path = "/mnt/data/sunlight/congress_reports/" + str(congress) +"/senate/" + str(number)
