@@ -1,5 +1,4 @@
 import path_tools as pt
-import earmarks_to_db0805 as ed
 import psycopg2
 import csv,time, re, os, ast, sys
 from datetime import datetime, date
