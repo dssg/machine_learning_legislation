@@ -29,7 +29,7 @@ def path_to_docid05(earmark_path):
         all_versions = bill_path.get_all_versions(path)
         best_date = date(1900,1,1)
         for version in all_versions:
-            npth = bill_path.get_bill_path(congress,number,version)
+            npth =  path + '/text-versions/' + version 
             bill_date = pt.BillPathUtils(npth).bill_date()
             bill_date = datetime.strptime(bill_date,"%Y-%m-%d").date()
             if bill_date > best_date:
@@ -72,6 +72,7 @@ def path_to_docid08(earmarks):
             if isinstance(number,tuple):
                 doc_ref  = number[0]
                 document_name = number[1]
+                print document_name
                 all_versions = bill_path.get_all_versions('/mnt/data/sunlight/bills/110/bills/hr/hr2764/')
                 if re.search('\Division\s\w',document_name):
                     doc_string = re.findall('\Division\s\w',document_name)[0].replace(" ","")
@@ -92,7 +93,7 @@ def path_to_docid08(earmarks):
                 all_versions = bill_path.get_all_versions(pth)
                 best_date = date(1900,1,1)
                 for version in all_versions:
-                    npth = bill_path.get_bill_path(congress,number,version)
+                    npth = pth + '/text-versions/' + version 
                     bill_date = pt.BillPathUtils(npth).bill_date()
                     bill_date = datetime.strptime(bill_date,"%Y-%m-%d").date()
                     if bill_date > best_date:
