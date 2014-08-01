@@ -76,7 +76,7 @@ def path_to_docid08(earmarks):
                 all_versions = bill_path.get_all_versions('/mnt/data/sunlight/bills/110/bills/hr/hr2764/')
                 if re.search('\Division\s\w',document_name):
                     doc_string = re.findall('\Division\s\w',document_name)[0].replace(" ","")
-                    version_index = [i for i in all_versions if doc_string in i]
+                    version_index = [div_type for div_type in all_versions if doc_string in i]
                     version = version_index[0]
                     pth = bill_path.get_bill_path(congress,doc_ref,version)
                     doc_id = pt.BillPathUtils(pth).get_db_document_id()
