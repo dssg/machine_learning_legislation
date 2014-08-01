@@ -139,9 +139,9 @@ def csv_extractor_09_10(path, year=2010):
         normalizer = docname_normalizer09
     
     csvFile = csv.reader(open(path, 'r'))
-    
+
     columns = csvFile.next()
-    doc_index = [columns.index(i) for i in document_columns]
+    doc_index = [columns.index(col_name) for col_name in document_columns]
     metaData_index = {}
     for ind, item in enumerate(doc_index):
         metaData_index[item] = [columns.index(j) for j in meta_data[document_columns[ind]]]

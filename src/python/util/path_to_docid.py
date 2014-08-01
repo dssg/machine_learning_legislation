@@ -100,7 +100,7 @@ def path_to_docid08(earmarks):
                         best_version = version
                 PATH_BILL = bill_path.get_bill_path(congress,number,best_version)
                 doc_id  = pt.BillPathUtils(PATH_BILL).get_db_document_id()
-                 if number == 'hr3222':
+                if number == 'hr3222':
                     database.append([earmark_id,74360,page,excerpt])
         elif bill=='report':
             if chamber == "senate":
