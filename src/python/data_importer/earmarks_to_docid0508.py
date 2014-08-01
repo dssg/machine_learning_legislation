@@ -2,10 +2,8 @@
 import os, sys, inspect
 sys.path.insert(0, os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],".."))))
 from util import path_tools
-from util import path_to_docid
-import numpy as np, pandas as pd
+import path_to_doc0508 as pd
 import re, time, csv
-import toDatabase as td
 import itertools 
 from collections import Counter
 
@@ -45,7 +43,7 @@ def csv_extractor08(path):
     Input: csv file for 2008 records
     Output: relevant database information 
     """
-    csvFile = csv.reader(open(path))
+    csvFile = csv.reader(path)
     document_columns = ['EARMARK_ID','CITATION_REFERENCE', 'CITATION_LOCATOR','CITATION_EXCERPT']
     columns = []
     earmarks_lis = []
@@ -182,12 +180,12 @@ def doc_normalizer05(doc_name):
             
 
 
-def csv_extractor_05(path):
+def csv_extractor05(path):
     """
     Input: csv file for 2005 records (altered using OpenRefine)
     Output: relevant database information
     """
-    csvFile = csv.reader(open(path))
+    csvFile = csv.reader(path)
     document_columns = ['earmark_id', 'Citation Reference', 'Citation Locator', 'Citation Excerpt']
     columns = []
     earmarks_lis = []
@@ -205,10 +203,10 @@ def csv_extractor_05(path):
                     if doc_normal:
                         if all([isinstance(elem, list) for elem in doc_normal]):
                             for dnormal in doc_normal:
-                                doc_id = ed.path_to_docid(dnormal)
+                                doc_id = pd.path_to_docid05(dnormal)
                                 earmarks_lis.append([earmark_id, doc_id, page, excerpt])
                         else:
-                            doc_id = ed.path_to_docid(doc_normal)
+                            doc_id = pd.path_to_docid05(doc_normal)
                             earmarks_lis.append([earmark_id, doc_id, page, excerpt])
                 else:
                     doc_names = re.split('&&', doc_name)
@@ -217,23 +215,9 @@ def csv_extractor_05(path):
                         if doc_normal:
                             if all([isinstance(elem, list) for elem in doc_normal]):
                                 for dnormal in doc_normal:
-                                    doc_id = ed.path_to_docid(dnormal)
+                                    doc_id = pd.path_to_docid05(dnormal)
                                     earmarks_lis.append([earmark_id, doc_id, page, excerpt])
                             else:
-                                doc_id = ed.path_to_docid(doc_normal)
+                                doc_id = pd.path_to_docid05(doc_normal)
                                 earmarks_lis.append([earmark_id, doc_id, page, excerpt])
-    earmarks_lis.sort()
-    earmarks_lis = list(elis for elis,_ in itertools.groupby(elis))
     return earmarks_lis
-                    
-# extracts the document id from the dattabase for 2005 and 2008 files
-with open('/mnt/data/sunlight/OMB/2005_app1.csv','rU') as f_obj:
-    earmarks_2005 = csv_extractor05(f_obj)
-with open('/mnt/data/sunlight/OMB/2008_app.csv','rU') as f_obj:
-    earmarks_2008 = csv_extractor(f_obj)
-
-## sends extracted data to the earmarks_documents table in the database 
-earmarks_2005 = pd.path_to_docid05(earmarks_2005)
-earmarks_2008 = pd.path_to_docid08(earmarks_2008)
-rows = earmarks_2005+earmarks_2008
-td.toDatabase(rows)
