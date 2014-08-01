@@ -72,7 +72,6 @@ def path_to_docid08(earmarks):
             if isinstance(number,tuple):
                 doc_ref  = number[0]
                 document_name = number[1]
-                print document_name
                 all_versions = bill_path.get_all_versions('/mnt/data/sunlight/bills/110/bills/hr/hr2764/')
                 if re.search('\Division\s\w',document_name):
                     doc_string = re.findall('\Division\s\w',document_name)[0].replace(" ","")
@@ -118,7 +117,6 @@ def path_to_docid08(earmarks):
     for ids in database:
         key = (ids[0],ids[1])
         value = [ids[2],ids[3]]
-        print value
         if not key in database_dict.keys():
             database_dict[key] = [value]
         else:
