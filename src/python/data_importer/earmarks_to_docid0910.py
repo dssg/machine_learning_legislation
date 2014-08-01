@@ -4,8 +4,9 @@
 # <codecell>
 import os, sys, inspect
 sys.path.insert(0, os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],".."))))
-from util import path_tools, path_to_docid
-import pandas as pd, numpy as np, csv
+import csv
+import path_to_doc0910 as pt
+reload(pt)
 import re, time,sys, itertools
 from collections import Counter
 
@@ -54,6 +55,7 @@ def docname_normalizer10(doc_name):
     Input: takes in a document name from 2010 OMB File
     Ouput: returns a normalized list of relevant attributes
     """ 
+    path = None
     house = 'house'
     senate = 'senate'
     bill = 'bill'
@@ -66,14 +68,14 @@ def docname_normalizer10(doc_name):
             return path 
         
         elif 'H.R.' in poc:
-            bill = re.findall('\d+', doc_name)[0]
-            bill_name = 'hr'+str(bill)
+            bill_name = re.findall('\d+', doc_name)[0]
+            bill_name = 'hr'+str(bill_name)
             path = [congress, bill, house, bill_name]
             return path
         
         elif 'S. ' in poc: 
-            bill = re.findall('\d+', doc_name)[0]
-            bill_name = 's'+str(bill)
+            bill_name = re.findall('\d+', doc_name)[0]
+            bill_name = 's'+str(bill_name)
             path = [congress,bill, senate, bill_name]
             return path 
 
@@ -92,8 +94,25 @@ def docname_normalizer10(doc_name):
             if 'xxx' not in doc_name:
                 rep = re.findall('\d+', doc_name)[1]
                 path = [congress, report, house, rep]
-                return path 
-                
+            elif 'Defense Appropriations' in doc_name:
+                path = [congress, bill, house, 'hr3326']
+            return path
+        elif 'P.L.' in poc:
+            congress = int(re.findall('\d+',doc_name)[0])
+            number = re.findall('\d+',doc_name)[1]
+            if number == '88':
+                path = [congress, bill,house,'hr2996']
+            elif number == '85':
+                path = [congress, bill,house,'hr3183']
+            elif number == '83':
+                path = [congress, bill,house,'hr2892']
+            elif number == '118':
+                path = [congress, bill, house,'hr3326']
+            elif number == '80':
+                path = [congress, bill, house,'hr2997']
+            return path
+    return path
+          
         
 def csv_extractor_09_10(path, year=2010):
     """
@@ -131,12 +150,14 @@ def csv_extractor_09_10(path, year=2010):
     for rows in csvFile:
         for name in doc_index:
             doc_name = rows[name]
+            normalized_doc_name = normalizer(doc_name)
             earmark_id = rows[earmarkid_index]
             unis_info = (earmark_id, doc_name)
-            if doc_name and not unis_info in unis:
+            if doc_name and not unis_info in unis and normalized_doc_name:
                 page = rows[metaData_index[name][0]]
                 excerpt = rows[metaData_index[name][1]]
-                docS_name = normalizer(doc_name)
+                docS_name = pt.path_to_docid0910(normalized_doc_name)
+                print doc_name, normalized_doc_name, docS_name
                 if docS_name:
                     db_info = (earmark_id, docS_name, page, excerpt)
                     earmarks_lis.append(db_info)
@@ -145,9 +166,6 @@ def csv_extractor_09_10(path, year=2010):
     return earmarks_lis
         
 
-# <codecell>
 
-#with open("2009_app.csv", "rU") as f_obj:
- #   elis1 = csv_extractor(f_obj,2009)
 
 
