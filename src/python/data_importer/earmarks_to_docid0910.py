@@ -157,7 +157,6 @@ def csv_extractor_09_10(path, year=2010):
                 page = rows[metaData_index[name][0]]
                 excerpt = rows[metaData_index[name][1]]
                 docS_name = pt.path_to_docid0910(normalized_doc_name)
-                print doc_name, normalized_doc_name, docS_name
                 if docS_name:
                     db_info = (earmark_id, docS_name, page, excerpt)
                     earmarks_lis.append(db_info)
