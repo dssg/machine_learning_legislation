@@ -49,16 +49,25 @@ def get_entities(path, conn):
             try:
                 csv_rows =[]
                 column_indices = text_table_tools.get_candidate_columns(table)
+
+
                 for row in table.rows:
                     row_offset = row.offset
-                    for idx in column_indices:
+                    clean_row_text = ''
+
+                    for idx in sorted(column_indices):
                         cell = row.cells[idx]
-                        offset = table_offset+row_offset+cell.offset
+                        #offset = table_offset+row_offset+cell.offset
                         #print cell.raw_text, f_str[offset:(offset+cell.length)]
                         if len(cell.clean_text) == 0:
                             continue
-                        csv_row = [cell.raw_text, "table_entity", str(offset), str(cell.length), cell.clean_text, "table", str(docid)]
-                        csv_rows.append(csv_row)
+                        clean_row_text += cell.clean_text + " | "
+
+                        #csv_row = [cell.raw_text, "table_entity", str(offset), str(cell.length), cell.clean_text, "table", str(docid)]
+                        #csv_rows.append(csv_row)
+
+                    csv_row = [clean_row_text, "table_row", str(table_offset+row_offset), str(row.length), clean_row_text, table.type + "_table", str(docid)]
+                    csv_rows.append(csv_row)
 
                 cmd = "insert into entities (" + ", ".join(fields) + ") values (%s, %s, %s, %s, %s, %s, %s)"
                 cur = conn.cursor()
