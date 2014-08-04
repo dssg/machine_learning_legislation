@@ -94,12 +94,13 @@ class simple_entity_text_feature_generator:
         """
         if not self.force and instance.feature_groups.has_key(self.name):
             return
-        instance.feature_groups[self.name] = []
+        instance.feature_groups[self.name] = {}
 
         s = instance.attributes["entity_inferred_name"]
         
-        
-        instance.feature_groups[self.name]+= [Feature(self.feature_prefix +t[0], t[1](s), self.name) for t in feature_functions]
+        for t in feature_functions:
+            feature_name = self.feature_prefix +t[0]
+            instance.feature_groups[self.name][feature_name] = Feature(feature_name, t[1](s))
 
 
 

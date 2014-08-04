@@ -5,7 +5,7 @@ import os, sys
 import codecs
 import random
 import psycopg2
-
+import logging
 
 
 
@@ -48,25 +48,38 @@ def get_entities(path, conn):
             table_offset = table.offset
             try:
                 csv_rows =[]
-                column_indices = text_table_tools.get_candidate_columns(table)
+                column_indices = sorted(text_table_tools.get_candidate_columns(table))
+
+
                 for row in table.rows:
                     row_offset = row.offset
+                    clean_row_text = ''
+
+                    csv_row = []
+
                     for idx in column_indices:
                         cell = row.cells[idx]
-                        offset = table_offset+row_offset+cell.offset
+                        #offset = table_offset+row_offset+cell.offset
                         #print cell.raw_text, f_str[offset:(offset+cell.length)]
                         if len(cell.clean_text) == 0:
                             continue
-                        csv_row = [cell.raw_text, "table_entity", str(offset), str(cell.length), cell.clean_text, "table", str(docid)]
-                        csv_rows.append(csv_row)
+                        clean_row_text += cell.clean_text + " | "
+
+                        #csv_row = [cell.raw_text, "table_entity", str(offset), str(cell.length), cell.clean_text, "table", str(docid)]
+                        #csv_rows.append(csv_row)
+
+                    csv_row = [clean_row_text[:2048], "table_row", table_offset+row_offset, row.length, clean_row_text[:2048], table.type + "_table", docid]
+
+                    csv_rows.append(csv_row)
 
                 cmd = "insert into entities (" + ", ".join(fields) + ") values (%s, %s, %s, %s, %s, %s, %s)"
                 cur = conn.cursor()
                 cur.executemany(cmd, csv_rows)
                 conn.commit()
             except Exception as e:
-                print e
-                print "SCREW UP"
+                print len(clean_row_text)
+                print csv_row
+                logging.exception("SCREW UP")
 
     
 
@@ -84,7 +97,7 @@ insert_all(bills2008, conn);
 insert_all(bills2009, conn);
 
 for year in years:
-    insert_all(reports_base+year+"/", conn);
+   insert_all(reports_base+year+"/", conn);
 conn.close()
 
 

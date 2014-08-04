@@ -46,10 +46,10 @@ def main():
     elif args.year == 2009:
         rows = csv_extractor_09_10(args.path, args.year)
         import_rows(rows)
- #   elif args.year == 2008:
-  #      rows = csv_extractor08(args.path)
-   # elif args.year == 2005:
-    #    rows = csv_extractor05(args.path)
+    elif args.year == 2008:
+        rows = csv_extractor08(args.path)
+    elif args.year == 2005:
+        rows = csv_extractor05(args.path)
     else:
         print "This year is not an option"
 

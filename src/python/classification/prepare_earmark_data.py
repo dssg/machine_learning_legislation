@@ -27,7 +27,6 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(mes
 
 CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
 
-NO_WIKI_PAGE_FEATURE = "NO_WIKIPEDIA_PAGE_WAS_FOUND"
 
 manager = Manager()
 global_data= manager.list([])
@@ -55,6 +54,9 @@ def get_entity_objects(entities, threads = 1):
     pool.map(global_data_append_entity ,entities)
     return global_data[:]
     #return map(lambda eid: Entity(eid) , entities)
+
+
+
     
 def get_instances_from_entities(entities, target_class, threads = 1):
     global global_data
@@ -66,43 +68,7 @@ def get_instances_from_entities(entities, target_class, threads = 1):
     return global_data[:]
     #return map( lambda entity: Instance(entity, target_class), entities )
 
-def convert_to_svmlight_format(X, Y, entities, path):
-    """
-    converts x and y into svmlight representaiton and write's it to path
-    """
-    f = open(path,'w')
-    previous_row = -1
-    values =  zip(X.row, X.col, X.data)
-    rows = {}
-    for i, j, v in values:
-        if not rows.has_key(i):
-            rows[i] = []
-        rows[i].append((i,j,v))
-    
-    for i, list_values in rows.iteritems():
-        if Y[i]:
-            label = 1
-        else:
-            label = -1
-        f.write("%d " %(label))
-        for t in list_values:
-            f.write("%d:%d " %(t[1]+1, t[2]))
-        f.write("#%d\n" %(entities[i]))
-    f.close()
         
-
-def classify_svm_cv(X, Y, folds=2):
-    C = 1.0
-    #X_train, X_test, y_train, y_test = cross_validation.train_test_split(X, Y, test_size=0.4, random_state=0)
-    clf = svm.SVC(kernel='linear', C=C)
-    #clf = sklearn.ensemble.RandomForestClassifier()
-    #s = clf.score(X_test, y_test)
-    logging.info("Starting cross validation")
-    skf = cross_validation.StratifiedKFold(Y, n_folds=folds)
-    scores = cross_validation.cross_val_score(clf, X, Y, cv=skf, n_jobs=3)
-    logging.info("Cross validation completed!")
-    print scores
-    print("Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
 
 
 def serialize_instances(instances, outfolder, chunk_size = 1000):
@@ -130,12 +96,8 @@ def load_instances(infolder):
             
     
 def main():
-    parser = argparse.ArgumentParser(description='build classifier')
+    parser = argparse.ArgumentParser(description='get pickeled instances')
     subparsers = parser.add_subparsers(dest='subparser_name' ,help='sub-command help')
-    
-    
-    parser_transform = subparsers.add_parser('transform', help='transform to svmlight format')
-    parser_transform.add_argument('--outfile', required=True, help='path to output file')
     
     parser_serialize = subparsers.add_parser('serialize', help='pickle instances')
     parser_serialize.add_argument('--data_folder', required=True, help='path to output pickled files')
@@ -153,14 +115,12 @@ def main():
 
     
     args = parser.parse_args()
-    
-    if args.subparser_name == "transform":
-        convert_to_svmlight_format(x, y, positive_entities+negative_entities, args.outfile)
+    logging.info("pid: " + str(os.getpid()))
+
 
 
         
-    elif args.subparser_name == "serialize":
-        logging.info("pid: " + str(os.getpid()))
+    if args.subparser_name == "serialize":
         positive_entities = read_entities_file(args.positivefile)
         negative_entities = read_entities_file(args.negativefile)
         logging.info("Pulling entities from database")
@@ -171,20 +131,14 @@ def main():
         logging.info("Creating pipe")
 
         feature_generators = [
-        #wikipedia_categories_feature_generator.wikipedia_categories_feature_generator(depth = 2, distinguish_levels=False, force=True ),
+        wikipedia_categories_feature_generator.wikipedia_categories_feature_generator(depth = 2, distinguish_levels=False, force=True ),
         entity_text_bag_feature_generator.unigram_feature_generator(force=True),
-        #entity_text_bag_feature_generator.bigram_feature_generator(force=True),
+        entity_text_bag_feature_generator.bigram_feature_generator(force=True),
         simple_entity_text_feature_generator.simple_entity_text_feature_generator(force=True),
         gen_geo_features.geo_feature_generator(force = True),
-        #calais_feature_generator.CalaisFeatureGenerator(force=True)
+        calais_feature_generator.CalaisFeatureGenerator(force=True)
         ]
-        pipe = Pipe(feature_generators, instances, num_processes=args.threads)
-
-        logging.info("Pushing into pipe")
-        pipe.push_all_parallel()
-        logging.info("Start Serializing")
-        serialize_instances(pipe.instances, args.data_folder)
-        logging.info("Done!")
+        
 
 
     elif args.subparser_name == "add":
@@ -202,12 +156,12 @@ def main():
         ]
 
 
-        pipe = Pipe(feature_generators, instances, num_processes=args.threads)
-        logging.info("Pushing into pipe")
-        pipe.push_all_parallel()
-        logging.info("Start Serializing")
-        serialize_instances(pipe.instances, args.data_folder)
-        logging.info("Done!")
+    pipe = Pipe(feature_generators, instances, num_processes=args.threads)
+    logging.info("Pushing into pipe")
+    pipe.push_all_parallel()
+    logging.info("Start Serializing")
+    serialize_instances(pipe.instances, args.data_folder)
+    logging.info("Done!")
         
 if __name__=="__main__":
     main()

@@ -99,14 +99,15 @@ class CalaisFeatureGenerator:
         if not self.force and instance.feature_groups.has_key(self.name):
             return
              
-        instance.feature_groups[self.name] = []
+        instance.feature_groups[self.name] = {}
         text = instance.attributes["entity_inferred_name"]
         calais_dict = calais_feature_dict(extract_entities(text))
         for key in calais_dict.keys():
             FEATURE_STRING = self.feature_prefix + str(key)
             count_value = calais_dict[key]
-            instance.feature_groups[self.name].append(Feature(FEATURE_STRING, count_value,self.name))
+            instance.feature_groups[self.name][FEATURE_STRING] = Feature(FEATURE_STRING, count_value)
+
         poli_feature = politicians_feature(text,self.lname,self.lname_upper,self.fname,self.fname_upper)
         if poli_feature:
-            instance.feature_groups[self.name].append(Feature('POLITICIAN-CALAIS_FEATURE_politician',poli_feature,self.name))
+            instance.feature_groups[self.name]['POLITICIAN-CALAIS_FEATURE_politician'] = Feature('POLITICIAN-CALAIS_FEATURE_politician',poli_feature)
         logging.debug( "Feature count %d for entity id: %d after %s" %(instance.feature_count(),instance.attributes["id"], self.name))

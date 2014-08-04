@@ -14,6 +14,7 @@ import math
 
 class Table:
     def __init__(self):
+        self.type = 'dots'
         self.content = []
         self.title = []
         self.offset = 0
@@ -189,8 +190,10 @@ def identify_tables(list_paragraphs):
         find_table_header(table)
         table_type = detect_table_type(table)
         if table_type == 'dashes':
+            table.type = 'dashes'
             parse_dashed_table(table)
         elif table_type == 'dots':
+            table.type == 'dots'
             parse_dots_table(table)
             #find_table_rows(table)
         #get_candidate_entities(table)

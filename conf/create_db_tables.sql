@@ -84,3 +84,12 @@ matched_entity_id int,
 manual_match boolean default False,
 primary key (earmark_document_id, matched_entity_id)
 );
+
+
+create table matching_labels
+(
+    earmark_id integer,
+    document_id integer,
+    entity_id integer,
+    match boolean default False
+);

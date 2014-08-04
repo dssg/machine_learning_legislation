@@ -253,7 +253,7 @@ def test_instances_to_scipy_sparse(feature_space, instances, ignore_groups=[]):
         for f_group, features in instances[i].feature_groups.iteritems():
             if f_group in ignore_groups:
                 continue
-            for f in features:
+            for f_name, f in features.iteritems():
             		if f.name in keys:
                 		X[i, feature_space[f.name]] =  f.value
 

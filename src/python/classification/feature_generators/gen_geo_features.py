@@ -111,17 +111,17 @@ class geo_feature_generator:
         """
         if not self.force and instance.feature_groups.has_key(self.name):
             return
-        instance.feature_groups[self.name] = []
+        instance.feature_groups[self.name] = {}
 
         s = instance.attributes["entity_inferred_name"]
         tokens = normalize(s).split(' ')
 
         
         
-        instance.feature_groups[self.name].append(Feature('GEO_FEAUTURE_geo_inferred_text_has_state', geo_inferred_text_has_state(tokens, self.full, self.full_upper, self.abbr), self.name))
-        instance.feature_groups[self.name].append(Feature('GEO_FEAUTURE_geo_inferred_text_has_county', geo_inferred_text_has_county(s), self.name))
-        instance.feature_groups[self.name].append(Feature('GEO_FEAUTURE_geo_inferred_text_has_city', geo_inferred_text_has_city(s, self.cities, self.cities_upper), self.name))
-        instance.feature_groups[self.name].append(Feature('GEO_FEAUTURE_geo_inferred_text_ends_with_state', geo_inferred_text_ends_with_state(tokens, self.abbr, self.full), self.name))
+        instance.feature_groups[self.name]['GEO_FEAUTURE_geo_inferred_text_has_state'] = Feature('GEO_FEAUTURE_geo_inferred_text_has_state', geo_inferred_text_has_state(tokens, self.full, self.full_upper, self.abbr))
+        instance.feature_groups[self.name]['GEO_FEAUTURE_geo_inferred_text_has_county'] = Feature('GEO_FEAUTURE_geo_inferred_text_has_county', geo_inferred_text_has_county(s))
+        instance.feature_groups[self.name]['GEO_FEAUTURE_geo_inferred_text_has_city'] = Feature('GEO_FEAUTURE_geo_inferred_text_has_city', geo_inferred_text_has_city(s, self.cities, self.cities_upper))
+        instance.feature_groups[self.name]['GEO_FEAUTURE_geo_inferred_text_ends_with_state'] = Feature('GEO_FEAUTURE_geo_inferred_text_ends_with_state', geo_inferred_text_ends_with_state(tokens, self.abbr, self.full))
 
 
         logging.debug( "Feature count %d for entity id: %d after %s" %(instance.feature_count(),instance.attributes["id"], self.name))

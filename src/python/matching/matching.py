@@ -14,7 +14,6 @@ import argparse
 import amend_earmark
 import logging
 
-
 from nltk import metrics, stem, tokenize
 from nltk.tokenize.punkt import PunktWordTokenizer
 from nltk.tokenize import WhitespaceTokenizer
@@ -112,15 +111,15 @@ def get_earmark_docs(earmark_id):
     return {doc['document_id'] for doc in docs}
 
 
-def get_entities(doc_id):
+def get_entities(doc_id, entity_type = 'table_entity'):
     """
     get entities for doc_id
     """
     conn = psycopg2.connect(CONN_STRING)
     columns = ["id", "entity_text", "entity_type", "entity_offset", "entity_length", "entity_inferred_name"]
-    cmd = "select "+", ".join(columns)+" from entities where document_id = %s and entity_type in ('table_entity')"
+    cmd = "select "+", ".join(columns)+" from entities where document_id = %s and entity_type  = %s"
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-    cur.execute(cmd, (doc_id,))
+    cur.execute(cmd, (doc_id,entity_type))
     records = cur.fetchall()
     conn.close()
     return records
