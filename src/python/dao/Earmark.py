@@ -16,7 +16,7 @@ class Earmark:
          enacted_year, coalesce(short_description,'') as short_description, 
          coalesce(full_description,'') as full_description, 
          coalesce(earmark_type,'') as earmark_type, coalesce(spendcom,'') as spendcom, 
-         coalesce(recepient,'') as recepient, manual_earmark
+         coalesce(recipient,'') as recepient, manual_earmark
          from earmarks where earmark_id = %s
          """
          conn = psycopg2.connect(CONN_STRING)

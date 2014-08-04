@@ -48,10 +48,10 @@ class Instance:
         """
         given earmark object
         """
-        self.["earmark_id"] = earmark.earmark_id
-        self.["short_description"] = earmark.short_description
-        self.["full_description"] = earmark.full_description
-        self.["recepient"] = earmark.recepient
+        self.attributes["earmark_id"] = earmark.earmark_id
+        self.attributes["short_description"] = earmark.short_description
+        self.attributes["full_description"] = earmark.full_description
+        self.attributes["recepient"] = earmark.recepient
         
         
         

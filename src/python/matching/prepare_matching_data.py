@@ -2,29 +2,33 @@ import os, sys, inspect
 sys.path.insert(0, os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],".."))))
 import argparse
 
-from matching import get_earmarks, get_earmark_docs, get_entities, bcolors, shinglize, shingle_match, get_earmark
 import os
 import psycopg2
 import psycopg2.extras
 CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
-from prompt import query_yes_no
-from random import shuffle
 import multiprocessing as mp
 import string
 import re
-import util path_tools
-from dao import Entity.Entity, Earmark.Earmark
-from classification import instance.Instance
+from dao import Entity, Earmark
+from classification import instance
+import logging
+from multiprocessing import Manager
+from classification.pipe import Pipe
+from classification.prepare_earmark_data import  serialize_instances
+
+
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s')
+MIN = 0.1
 
 
 
-
+manager = Manager()
 
 def get_earmarks_from_db():
 
     conn = psycopg2.connect(CONN_STRING)
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-    cur.execute("select earmark_id from row_matching_labels where document_id > 0")
+    cur.execute("select earmark_id from row_matching_labels where document_id > %s", (MIN, ))
     earmarks = cur.fetchall()
     conn.close()
     return set([e[0] for e in earmarks])
@@ -33,7 +37,7 @@ def get_entities_from_db():
 
     conn = psycopg2.connect(CONN_STRING)
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-    cur.execute("select distinct entity_id from row_matching_labels where document_id > 0")
+    cur.execute("select distinct entity_id from row_matching_labels where document_id > 0 and jaccard > %s", (MIN, ))
     entities = cur.fetchall()
     conn.close()
     return set([e[0] for e in entities])
@@ -41,23 +45,23 @@ def get_entities_from_db():
 
 
 def get_entity_dao(entity_id):
-    return (entity_id, dao.Enity(entity_id))
+    return (entity_id, Entity.Entity(entity_id))
 
 
 def get_earmark_dao(earmark_id):
-    return (entity_id, dao.Earmark(entity_id))
+    return (earmark_id, Earmark.Earmark(earmark_id))
 
 
 def get_matching_tuples(entity_daos, earmark_daos):
     conn = psycopg2.connect(CONN_STRING)
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-    cur.execute("select earmark_id, entity_id, label from row_matching_labels where document_id > 0 and jaccard > 0.1")
+    cur.execute("select earmark_id, entity_id, label from row_matching_labels where document_id > 0 and jaccard > %s", (MIN, ))
 
     matching_tuples = []
 
     matches = cur.fetchall()
     for m in matches:
-        matching_tuple = [entity_daos[m['enitiy_id']], earmark_daos[m['earmark_id']], m['label']]
+        matching_tuple = [entity_daos[m['entity_id']], earmark_daos[m['earmark_id']], m['label']]
         matching_tuples.append(matching_tuple)
 
     conn.close()
@@ -65,7 +69,7 @@ def get_matching_tuples(entity_daos, earmark_daos):
 
 
 def get_instance(matching_tuple):
-    return instance()
+    return instance.Instance(entity = matching_tuple[0], earmark = matching_tuple[1], target_class = matching_tuple[2])
 
     
 
@@ -89,24 +93,32 @@ def main():
     logging.info("pid: " + str(os.getpid()))
 
         
-    elif args.subparser_name == "serialize":
+    if args.subparser_name == "serialize":
 
-        entity_ids = get_enities_from_db()
-        p = mp.Pool(args.threads)
-        entity_daos = dict(p.map(get_entity_dao, entity_ids))
+        
+        
+        earmark_ids = list(get_earmarks_from_db())
 
-
-        earmark_ids = get_earmarks_from_db()
         p = mp.Pool(args.threads)
         earmark_daos = dict(p.map(get_earmark_dao, earmark_ids))
+        logging.info("Got %d Earmarks" % len(earmark_daos))
+
+
+        entity_ids = list(get_entities_from_db())
+
+        p = mp.Pool(args.threads)
+        entity_daos = dict(p.map(get_entity_dao, entity_ids))
+        logging.info("Got %d entities" % len(entity_daos))
 
 
         matching_tuples = get_matching_tuples(entity_daos, earmark_daos)
+        
+        #p = mp.Pool(args.threads)
+        #earmark_daos = dict(p.map(get_instance, matching_tuples))
+        instances = []
+        for m in matching_tuples:
+            instances.append(get_instance(m))
 
-
-        positive_instance = get_instances_from_entities(, 1, args.threads )
-        negative_instance = get_instances_from_entities(get_entity_objects(negative_entities, args.threads), 0, args.threads )
-        instances = positive_instance + negative_instance
         
         logging.info("Creating pipe")
 
