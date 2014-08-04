@@ -74,7 +74,7 @@ class Pipe:
             for f_group, features in i.feature_groups.iteritems():
                 if f_group in ignore_groups:
                     continue
-                for f in features:
+                for f_name, f in features.iteritems():
                     if not feature_space.has_key(f.name):
                         feature_space[f.name] = index
                         index +=1
@@ -87,7 +87,7 @@ class Pipe:
             for f_group, features in self.instances[i].feature_groups.iteritems():
                 if f_group in ignore_groups:
                     continue
-                for f in features:
+                for f_name, f in features.iteritems():
                     X[i, feature_space[f.name]] =  f.value
             Y.append(self.instances[i].target_class)
         logging.info("%d Instances loaded with %d features" %(X.shape[0], X.shape[1]))

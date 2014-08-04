@@ -36,11 +36,14 @@ class unigram_feature_generator:
         """
         if not self.force and instance.feature_groups.has_key(self.name):
             return
-        instance.feature_groups[self.name] = []
+        instance.feature_groups[self.name] = {}
 
         entity_text = normalize(instance.attributes["entity_inferred_name"])
         tokens = entity_text.split(' ')
-        instance.feature_groups[self.name] += [Feature(self.feature_prefix +token, 1, self.name) for token in tokens ] 
+        for token in tokens:
+            feature_name = self.feature_prefix +token
+
+            instance.feature_groups[self.name][feature_name] = Feature(feature_name, 1) 
         logging.debug( "Feature count %d for entity id: %d after %s" %(instance.feature_count(),instance.attributes["id"], self.name))
 
 
@@ -59,10 +62,12 @@ class bigram_feature_generator:
         """
         if not self.force and instance.feature_groups.has_key(self.name):
             return
-        instance.feature_groups[self.name] = []
+        instance.feature_groups[self.name] = {}
 
         entity_text = normalize(instance.attributes["entity_inferred_name"])
         tokens = entity_text.split(' ')
-        instance.feature_groups[self.name] += [Feature(self.feature_prefix +tokens[i]+"_"+tokens[i+1], 1, self.name) for i in range(len(tokens)-1) ] 
+        for i in range(len(tokens)-1):
+            feature_name = self.feature_prefix +tokens[i]+"_"+tokens[i+1]
+            instance.feature_groups[self.name][feature_name]  = Feature(feature_name, 1) 
         logging.debug( "Feature count %d for entity id: %d after %s" %(instance.feature_count(),instance.attributes["id"], self.name))
         
