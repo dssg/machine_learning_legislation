@@ -1,6 +1,9 @@
+import os, sys, inspect
+sys.path.insert(0, os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],".."))))
+import argparse
+
 from matching import get_earmarks, get_earmark_docs, get_entities, bcolors, shinglize, shingle_match, get_earmark
 import os
-import argparse
 import psycopg2
 import psycopg2.extras
 CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
@@ -9,126 +12,125 @@ from random import shuffle
 import multiprocessing as mp
 import string
 import re
-import path_tools
-
-
-def normalize(s):
-
-    s = s.replace("|", "")
-    for p in string.punctuation:
-        s = s.replace(p, ' ')
-
-    s = re.sub(r'[ ]{2,}', " ", s)
-
-    return s.lower().strip()
-
-
-AUTO_LABEL_NEGATIVE = 0.1
-AUTO_LABEL_POSITIVE = 0.8
+import util path_tools
+from dao import Entity.Entity, Earmark.Earmark
+from classification import instance.Instance
 
 
 
-def get_jaccard_rank (matches):
-
-    for i in range(len(matches)):
-        matches[i].append()
 
 
-def get_instance(earmark_doc_id_pair):
-    earmark = earmark_doc_id_pair[0]
-    doc_id = earmark_doc_id_pair[1]
-
-    # get all data for this pair
+def get_earmarks_from_db():
 
     conn = psycopg2.connect(CONN_STRING)
-    cur = conn.cursor()
-    cur.execute("select * from row_matching_labels where document_id = %s and earmark_id = %s", (doc_id, earmark['earmark_id']))
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cur.execute("select earmark_id from row_matching_labels where document_id > 0")
+    earmarks = cur.fetchall()
+    conn.close()
+    return set([e[0] for e in earmarks])
+
+def get_entities_from_db():
+
+    conn = psycopg2.connect(CONN_STRING)
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cur.execute("select distinct entity_id from row_matching_labels where document_id > 0")
+    entities = cur.fetchall()
+    conn.close()
+    return set([e[0] for e in entities])
+
+
+
+def get_entity_dao(entity_id):
+    return (entity_id, dao.Enity(entity_id))
+
+
+def get_earmark_dao(earmark_id):
+    return (entity_id, dao.Earmark(entity_id))
+
+
+def get_matching_tuples(entity_daos, earmark_daos):
+    conn = psycopg2.connect(CONN_STRING)
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cur.execute("select earmark_id, entity_id, label from row_matching_labels where document_id > 0 and jaccard > 0.1")
+
+    matching_tuples = []
 
     matches = cur.fetchall()
-    matches = [list(m) for m in matches]
-    matches = sorted(matches, reverse = true, key = lambda x: x[3])
-    get_jaccard_rank(matches)
+    for m in matches:
+        matching_tuple = [entity_daos[m['enitiy_id']], earmark_daos[m['earmark_id']], m['label']]
+        matching_tuples.append(matching_tuple)
 
-    for match in matches:
-        print match
-        print type(match)
-    print "\n"
-
-    """short_desc = normalize(earmark['short_description'])
-    full_desc = normalize(earmark['full_description'])
+    conn.close()
+    return matching_tuples
 
 
-    short_desc_shingles = shinglize(short_desc, 2)
-    full_desc_shingles = shinglize(full_desc, 2)
+def get_instance(matching_tuple):
+    return instance()
 
-    earmark_document_ids = get_earmark_docs(earmark['earmark_id'])
-
-    matches = []
-
-    for earmark_document_id in earmark_document_ids:
-        
-        doc_entities = get_entities(earmark_document_id, entity_type = 'table_row')
-        for doc_entity in doc_entities:
-            #for cell in table_row['entity_inferred_name'].split("|")[:-1]
-
-
-            entity_inferred_name = normalize(doc_entity['entity_inferred_name'])
-            entity_inferred_name_shingles = shinglize(entity_inferred_name, 2)
-
-            s_score = shingle_match(entity_inferred_name_shingles, short_desc_shingles)
-            f_score = shingle_match(entity_inferred_name_shingles, full_desc_shingles)
-            r_score = shingle_match(entity_inferred_name_shingles, recipient_shingles)
-
-            max_score = max(s_score, f_score, r_score)
-
-            matches.append((max_score, doc_entity, earmark_document_id))
-            
-
-    matches = sorted(matches, reverse = True)
-
-    print 'Got Matches for Earmark'
-
-    return earmark, matches"""
-
-
+    
 
 
 
 
 def main():
-
+    parser = argparse.ArgumentParser(description='get pickeled instances')
+    subparsers = parser.add_subparsers(dest='subparser_name' ,help='sub-command help')
     
 
-    conn = psycopg2.connect(CONN_STRING)
+    parser_serialize = subparsers.add_parser('serialize', help='pickle instances')
+    parser_serialize.add_argument('--data_folder', required=True, help='path to output pickled files')
+    parser_serialize.add_argument('--threads', type=int, default = mp.cpu_count(), help='number of threads to run in parallel')
 
-    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-    
-    cur.execute("select earmark_id from row_matching_labels where document_id > 0")
-    earmarks = cur.fetchall()
-    earmarks = set([e[0] for e in earmarks])
-    earmarks = [ get_earmark(e) for e in earmarks ]
+    parser_add = subparsers.add_parser('add', help='add to pickled instances')
+    parser_add.add_argument('--data_folder', required=True, help='path to output pickled files')
+    parser_add.add_argument('--threads', type=int, default = mp.cpu_count(), help='number of threads to run in parallel')
 
-    earmark_doc_id_pairs = []
+    args = parser.parse_args()
+    logging.info("pid: " + str(os.getpid()))
 
-    for earmark in earmarks:
-        for doc_id in get_earmark_docs(earmark['earmark_id']):
-            earmark_doc_id_pairs.append((earmark, doc_id))
+        
+    elif args.subparser_name == "serialize":
 
-
-    
-
-
-    #p = mp.Pool(1)
-    #results = p.map(get_instance, earmark_doc_id_pairs )
-
-    for earmark_doc_id_pair in earmark_doc_id_pairs:
-        get_instance(earmark_doc_id_pair)
+        entity_ids = get_enities_from_db()
+        p = mp.Pool(args.threads)
+        entity_daos = dict(p.map(get_entity_dao, entity_ids))
 
 
+        earmark_ids = get_earmarks_from_db()
+        p = mp.Pool(args.threads)
+        earmark_daos = dict(p.map(get_earmark_dao, earmark_ids))
 
 
+        matching_tuples = get_matching_tuples(entity_daos, earmark_daos)
 
 
+        positive_instance = get_instances_from_entities(, 1, args.threads )
+        negative_instance = get_instances_from_entities(get_entity_objects(negative_entities, args.threads), 0, args.threads )
+        instances = positive_instance + negative_instance
+        
+        logging.info("Creating pipe")
 
+        feature_generators = [
+        
+        ]
+        
+
+
+    elif args.subparser_name == "add":
+        instances = load_instances(args.data_folder)
+        logging.info("Creating pipe")
+
+
+        feature_generators = [
+        ]
+
+
+    pipe = Pipe(feature_generators, instances, num_processes=args.threads)
+    logging.info("Pushing into pipe")
+    pipe.push_all_parallel()
+    logging.info("Start Serializing")
+    serialize_instances(pipe.instances, args.data_folder)
+    logging.info("Done!")
+        
 if __name__=="__main__":
     main()
