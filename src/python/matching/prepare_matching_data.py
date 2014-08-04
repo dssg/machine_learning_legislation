@@ -30,7 +30,8 @@ AUTO_LABEL_POSITIVE = 0.8
 
 def get_jaccard_rank (matches):
 
-    for i in range(len(matches))
+    for i in range(len(matches)):
+        matches[i].append()
 
 
 def get_instance(earmark_doc_id_pair):
