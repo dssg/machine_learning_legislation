@@ -171,12 +171,12 @@ def main():
         logging.info("Creating pipe")
 
         feature_generators = [
-        #wikipedia_categories_feature_generator.wikipedia_categories_feature_generator(depth = 2, distinguish_levels=False, force=True ),
+        wikipedia_categories_feature_generator.wikipedia_categories_feature_generator(depth = 2, distinguish_levels=False, force=True ),
         entity_text_bag_feature_generator.unigram_feature_generator(force=True),
-        #entity_text_bag_feature_generator.bigram_feature_generator(force=True),
+        entity_text_bag_feature_generator.bigram_feature_generator(force=True),
         simple_entity_text_feature_generator.simple_entity_text_feature_generator(force=True),
         gen_geo_features.geo_feature_generator(force = True),
-        #calais_feature_generator.CalaisFeatureGenerator(force=True)
+        calais_feature_generator.CalaisFeatureGenerator(force=True)
         ]
         pipe = Pipe(feature_generators, instances, num_processes=args.threads)
 

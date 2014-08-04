@@ -51,13 +51,15 @@ class table_header_feature_generator:
         if not self.force and instance.feature_groups.has_key(self.name):
             return
         entity_id = instance.attributes["id"]
-        instance.feature_groups[self.name] = []
+        instance.feature_groups[self.name] = {}
 
         headers = self.get_table_headers_from_entity_id(entity_id)
         if headers:
-            instance.feature_groups[self.name] += [Feature(self.feature_prefix + header, 1, self.name) for header in headers]
+            for header in headers:
+                feature_name = self.feature_prefix + header
+                instance.feature_groups[self.name][feature_name] = Feature(feature_name, 1) 
         else:
-            instance.feature_groups[self.name].append(Feature(self.no_header_feature, 1, self.name))
+            instance.feature_groups[self.name][self.no_header_feature] = Feature(self.no_header_feature, 1)
         logging.debug( "Feature count for entity id: %d after %s" %(instance.attributes["id"], self.name))
 
     def get_table_headers_from_entity_id(self,entity_id):
@@ -98,9 +100,8 @@ class table_is_first_table_feature_generator:
         if not self.force and instance.feature_groups.has_key(self.name):
             return
         entity_id = instance.attributes["id"]
-        instance.feature_groups[self.name] = []
-        instance.feature_groups[self.name].append(Feature("IS_FIRST_TABLE", self.is_first_table(entity_id), self.name))
-
+        instance.feature_groups[self.name] = {}
+        instance.feature_groups[self.name]['IS_FIRST_TABLE'] = Feature("IS_FIRST_TABLE", self.is_first_table(entity_id))
         logging.debug( "Feature count for entity id: %d after %s" %(instance.attributes["id"], self.name))
 
     def is_first_table(self,entity_id):
@@ -145,16 +146,14 @@ class row_contains_president_feature_generator(table_feature_generator):
             return
         entity_id = instance.attributes["id"]
         table = self.get_entity_table(entity_id)
-        instance.feature_groups[self.name] = []
+        instance.feature_groups[self.name] = {}
         for row in table.rows:
             pass #print "Entity: %s (%s) .\n\n Row: %s" % (instance.attributes["entity_text"], instance.attributes["id"], row.raw_text)
         entity_row = [row for row in table.rows if [cell for cell in row.cells if instance.attributes["entity_text"] in cell.clean_text]]
         if entity_row:
             row = entity_row[0]
             if "president" in row.raw_text.lower():
-                instance.feature_groups[self.name].append(Feature("PRESIDENT_IN_ROW", 1, self.name))
-            else:
-                instance.feature_groups[self.name].append(Feature("PRESIDENT_IN_ROW", 0, self.name))
+                instance.feature_groups[self.name]['PRESIDENT_IN_ROW'] = Feature("PRESIDENT_IN_ROW", 1)
 
             logging.debug( "Feature count for entity id: %d after %s" %(instance.attributes["id"], self.name))
         else:

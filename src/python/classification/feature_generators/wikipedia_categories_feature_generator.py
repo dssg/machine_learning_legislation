@@ -80,7 +80,7 @@ class wikipedia_categories_feature_generator:
         page_title = self.entity_text_to_wikipage(instance.attributes["entity_inferred_name"])
         logging.debug("TEXT: %s" % instance.attributes["entity_inferred_name"])
         logging.debug( "WIKI PAGE: %s" % page_title)
-        instance.feature_groups[self.name] = []
+        instance.feature_groups[self.name] = {}
         if page_title:
             instance.attributes["matching_wiki_page"] = page_title
             categories = wiki_tools.get_category_hierarchy(page_title, self.depth)
@@ -89,11 +89,16 @@ class wikipedia_categories_feature_generator:
             if self.distinguish_levels:
                 for i in range(len(categories)):
                     level = categories[i]
-                    instance.feature_groups[self.name] += [ Feature(self.feature_prefix +str(i+1)+"_"+cat, 1, self.name) for cat in level  ]  
+                    for cat in level:
+                        feature_name = self.feature_prefix +str(i+1)+"_"+cat
+                        instance.feature_groups[self.name][feature_name] =  Feature(feature_name, 1)  
             else:
                 for level in categories:
-                    instance.feature_groups[self.name] += [Feature(self.feature_prefix +cat, 1, self.name) for cat in level]
+                    for cat in level:
+                        feature_name = self.feature_prefix + cat
+                        instance.feature_groups[self.name][feature_name] = Feature(feature_name, 1)
         else:
-            instance.feature_groups[self.name].append(Feature( self.NO_WIKI_PAGE_FEATURE,1,self.name))
+            instance.feature_groups[self.name][self.NO_WIKI_PAGE_FEATURE] = Feature(self.NO_WIKI_PAGE_FEATURE,1)
+            
         logging.debug( "Feature count %d for entity id: %d after %s" %(instance.feature_count(),instance.attributes["id"], self.name))
         
