@@ -113,8 +113,6 @@ def main():
 
         matching_tuples = get_matching_tuples(entity_daos, earmark_daos)
         
-        #p = mp.Pool(args.threads)
-        #earmark_daos = dict(p.map(get_instance, matching_tuples))
         instances = []
         for m in matching_tuples:
             instances.append(get_instance(m))

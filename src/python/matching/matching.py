@@ -1,4 +1,5 @@
-import os, sys
+import os, sys, inspect
+sys.path.insert(0, os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],".."))))
 import codecs
 import psycopg2
 import psycopg2.extras
@@ -8,10 +9,10 @@ import operator
 import string
 import itertools
 import operator
-import path_tools
+import util.path_tools
 import re
 import argparse
-import amend_earmark
+import util.amend_earmark
 import logging
 
 from nltk import metrics, stem, tokenize
