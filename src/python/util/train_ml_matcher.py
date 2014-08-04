@@ -29,7 +29,8 @@ AUTO_LABEL_POSITIVE = 0.8
 
 
 def get_jaccard_rank (matches):
-    pass
+
+    for i in range(len(matches))
 
 
 def get_instance(earmark_doc_id_pair):
@@ -43,6 +44,9 @@ def get_instance(earmark_doc_id_pair):
     cur.execute("select * from row_matching_labels where document_id = %s and earmark_id = %s", (doc_id, earmark['earmark_id']))
 
     matches = cur.fetchall()
+    matches = [list(m) for m in matches]
+    matches = sorted(matches, reverse = true, key = lambda x: x[3])
+    get_jaccard_rank(matches)
 
     for match in matches:
         print match
