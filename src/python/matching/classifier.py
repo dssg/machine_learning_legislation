@@ -6,6 +6,7 @@ from classification.prepare_earmark_data import load_instances
 from sklearn.ensemble import RandomForestClassifier
 from sklearn import cross_validation
 from sklearn.metrics import classification_report
+from sklearn.metrics import precision_recall_fscore_support
 
 import logging
 
@@ -18,13 +19,24 @@ def classify_randomforest_cv(X,y,estimators=500,test_data=0.4,features_func='log
 
 
     cv = cross_validation.StratifiedKFold(y, n_folds = 5, random_state = 0)
-
+    cv_precision = []
+    cv_recall = []
+    cv_fscore = []
+    cv_support = []
     for i, (train, test) in enumerate(cv):
         model = clf.fit(X[train], y[train])
         y_pred = model.predict(X[test])
         #target_names = ['no match', 'match']target_names=target_names
-        print(classification_report(y[test], y_pred))
-
+        #print(classification_report(y[test], y_pred))
+        cv_report = precision_recall_fscore_support(y_true,y_pred,average='micro')
+        cv_precision.append(cv_report[0])
+        cv_recall.append(cv_report[1])
+        cv_fscore.append(cv_report[2])
+        cv_support.append(cv_report[3])
+    print "Precision: Mean-%0.2f, Standard Error-%0.2f" %(np.mean(cv_precision),np.std(cv_precision))
+    print "Recall: Mean-%0.2f, Standard Error-%0.2f" %(np.mean(cv_recall),np.std(cv_recall))
+    print "F-Score: Mean-%0.2f, Standard Error-%0.2f" %(np.mean(cv_fscore),np.std(cv_fscore))
+    print "Support: Mean-%0.2f, Standard Error-%0.2f" %(np.mean(cv_support),np.std(cv_support))
 
 
     if loo :
