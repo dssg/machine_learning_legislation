@@ -20,21 +20,17 @@ class ShinglesGenerator:
     def operate(self, instance_object):
         instance_object.attributes[self.prefix+self.attribute] = self.shinglize(instance_object.attributes[self.attribute], self.ngrams)
         
-    def normalize(self,s):
-        for p in string.punctuation:
-            s = s.replace(p, ' ')
-        s = re.sub(r'[ ]{2,}', " ", s)
-        return s.lower().strip()
+    
         
     def tokenize(self,s):
         return WhitespaceTokenizer().tokenize(s)
         
-    def shinglize(self,s, n, tokenizer=self.tokenize):
+    def shinglize(self,s, n):
         """
         return size n shingles for the string s
         """
         shingles = set()
-        tokens = tokenizer(s)
+        tokens = self.tokenize(s)
         for i in range(len(tokens) - n + 1):
             shingles.add('_'.join(tokens[i:i+n]))
         return shingles

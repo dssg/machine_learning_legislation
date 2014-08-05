@@ -21,7 +21,6 @@ def normalize(s):
         s = s.replace(p, ' ')
 
     s = re.sub(r'[ ]{2,}', " ", s)
-
     return s.lower().strip()
 
 

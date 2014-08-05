@@ -37,7 +37,7 @@ def classify_randomforest_cv(X,Y,estimators=10,test_data=0.4,features_func='sqrt
     
     print 'OOB Score:', oob_score
     print 'LOO Score:', scores
-    print("Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
+    print("Accuracy: %0.2f (+/- %0.2f)" % (loo_score.mean(), loo_score.std() * 2))
 
     return oob_score,loo_score
 

@@ -5,17 +5,23 @@ from pprint import pprint
 import logging
 from nltk import metrics, stem, tokenize
 from nltk.tokenize import WhitespaceTokenizer
+import string
+import re
+
 
 def normalize(s):
+    s = s.replace("|", "")
     for p in string.punctuation:
         s = s.replace(p, ' ')
     s = re.sub(r'[ ]{2,}', " ", s)
     return s.lower().strip()
 
+    
+
 def tokenize(s):
     return WhitespaceTokenizer().tokenize(s)
 
-def shinglize(s, n, tokenizer=tokenize):
+def shinglize(s, n = 2, tokenizer=tokenize):
     """
     return size n shingles for the string s
     """
@@ -25,13 +31,8 @@ def shinglize(s, n, tokenizer=tokenize):
         shingles.add('_'.join(tokens[i:i+n]))
     return shingles
     
-def jaccard_distance(str1, str2, grams=2, normalizer=normalize, tokenizer=tokenize):
-    if normalizer:
-        str1 = normalizer(str1)
-        str2 = normalizer(str2)
-    shingles1 = shinglize(str1, grams, tokenizer)
-    shingles2 = shinglize(str2, grams, tokenizer)
-    return (len(shingles1.intersection(shingles2)) * 1.0) / max(1,len(shingles1.union(shingles2)) )
+def jaccard_distance(s1, s2):
+    return (len(s1.intersection(s2)) * 1.0) / max(1,len(s1.union(s2)) )
     
 def is_prefix(pattern, text, normalizer=normalize):
     """
@@ -51,4 +52,3 @@ def is_postfix(pattern, text, normalizer=normalize):
         text = normalize(text)
     return text.endswith(pattern)
     
-def 
