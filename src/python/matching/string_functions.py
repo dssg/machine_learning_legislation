@@ -34,21 +34,18 @@ def shinglize(s, n = 2, tokenizer=tokenize):
 def jaccard_distance(s1, s2):
     return (len(s1.intersection(s2)) * 1.0) / max(1,len(s1.union(s2)) )
     
-def is_prefix(pattern, text, normalizer=normalize):
+def is_prefix(pattern, text):
     """
     checks if pattern is a prefix of text
     """
-    if normalizer:
-        pattern = normalize(pattern)
-        text = normalize(text)
     return text.startswith(pattern)
     
-def is_postfix(pattern, text, normalizer=normalize):
+def is_postfix(pattern, text):
     """
     checks if pattern is a prefix of text
     """
-    if normalizer:
-        pattern = normalize(pattern)
-        text = normalize(text)
     return text.endswith(pattern)
+    
+def is_infix(pattern, text):
+    return text.find(pattern) > -1
     

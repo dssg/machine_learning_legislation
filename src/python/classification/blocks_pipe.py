@@ -16,6 +16,7 @@ def parallel_target(pipe_instances_tuple):
     pipe = pipe_instances_tuple[0]
     instances = pipe_instances_tuple[1]
     new_instances = pipe(instances)
+    return new_instances
     for inst in new_instances:
         parallel_target.queue.put(inst)
     
@@ -35,20 +36,25 @@ class BlocksPipe:
     
     def push_all_parallel(self):
         logging.info("creating thread pool with %d threads" %(self.num_processes))
-        out_queue = mp.Queue()
-        pool = mp.Pool(self.num_processes, initilize_parallel, [out_queue])
+        from guppy import hpy
+        h = hpy()
+        #out_queue = mp.Queue()
+        logging.info("Before running thread pool")
+        print h.heap()
+        #pool = mp.Pool(self.num_processes, initilize_parallel, [out_queue])
+        pool = mp.Pool(self.num_processes)
         groups = self.grouper.group_instances(self.instances)
-        pool.map(func=parallel_target, iterable= [(self, instances) for grp, instances in groups.iteritems()])
-        del groups
-        new_instances = []
-        for i in range(len(self.instances)):
-            new_instances.append(out_queue.get())
-        del out_queue
-        del self.instances
-        self.instances = new_instances
+        lst_of_lst_of_instances = pool.map(func=parallel_target, iterable= [(self, instances) for grp, instances in groups.iteritems()])
+        del self.instances[:]
+        self.instances = []
+        for lst in lst_of_lst_of_instances:
+            for inst in lst:
+                self.instances.append(inst)
+        
         
     def __call__(self, instances):
         return self.push_single(instances)
+        
     def push_single(self, instances):
         logging.debug("operating on instance")
         for fg in self.feature_generators:

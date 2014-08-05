@@ -23,13 +23,13 @@ from entity_attributes import EntityAttributes
 from earmark_attributes import EarmarkAttributes
 from matching.feature_generators.jaccard_feature_generator import JaccardFeatureGenerator
 from matching.feature_generators.ranking_feature_generator import RankingFeatureGenerator
-from matching.feature_generators.difference_feature_generator import DifferenceFeatureGenerator
+#from matching.feature_generators.difference_feature_generator import DifferenceFeatureGenerator
 
 
 
 
 
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 MIN = 0.1
 
 
@@ -108,50 +108,33 @@ def main():
 
         
     if args.subparser_name == "serialize":
-
-        
-        
         earmark_ids = list(get_earmarks_from_db())
         entity_ids = list(get_entities_from_db())
-
-
 
         p = mp.Pool(args.threads)
         earmark_attributes = dict(p.map(get_earmark_attributes, earmark_ids))
         logging.info("Got %d Earmarks" % len(earmark_attributes))
 
-
-
         p = mp.Pool(args.threads)
         entity_attributes = dict(p.map(get_entity_attributes, entity_ids))
         logging.info("Got %d entities" % len(entity_attributes))
-
 
         matching_tuples = get_matching_tuples(entity_attributes, earmark_attributes)
 
         logging.info("Got %d Matching Tuples" % len(matching_tuples))
 
-
         instances = []
         for m in matching_tuples:
             instances.append(get_instance(m))
-
-
-
-        
+            
         logging.info("Creating pipe")
-
 
         fgs = [
             JaccardFeatureGenerator()
         ]
-
         pipe = Pipe(fgs, instances, num_processes=args.threads)
         logging.info("Pushing into pipe")
         pipe.push_all_parallel()
-
-
-        
 
         # group by earmark and document:
 
@@ -175,34 +158,31 @@ def main():
         grouper = InstancesGrouper(['earmark_id'])
         pipe = BlocksPipe(grouper, fgs, pipe.instances, num_processes=args.threads )
         pipe.push_all_parallel()
-    
-
 
         #Serialize
         logging.info("Start Serializing")
         serialize_instances(pipe.instances, args.data)
         logging.info("Done!")
 
-
-
-
-
-
-
-
-
     elif args.subparser_name == "add":
-        instances = load_instances(args.data)
-        exit()
-
+        
         fgs = [
             RankingFeatureGenerator(feature_group = "JACCARD_FG", feature ="JACCARD_FG_max_jaccard" , prefix = 'G2_')
-
         ]
+        
         grouper = InstancesGrouper(['earmark_id'])
-        pipe = BlocksPipe(grouper, fgs, instances, num_processes=args.threads )
+        pipe = BlocksPipe(grouper, fgs, load_instances(args.data), num_processes=args.threads )
         pipe.push_all_parallel()
         
+        
+        #new
+        
+        fgs = [
+            RankingFeatureGenerator(feature_group = "JACCARD_FG", feature ="JACCARD_FG_max_jaccard" , prefix = 'G2_')
+        ]
+        grouper = InstancesGrouper(['earmark_id'])
+        pipe = BlocksPipe(grouper, fgs, pipe.instances, num_processes=args.threads )
+        pipe.push_all_parallel()
 
 
         #Serialize
