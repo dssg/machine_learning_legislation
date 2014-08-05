@@ -69,11 +69,11 @@ def get_matching_tuples(entity_daos, earmark_daos):
 
 
 def get_instance(matching_tuple):
-    return instance.Instance(entity = matching_tuple[0], earmark = matching_tuple[1], target_class = matching_tuple[2])
-
-    
-
-
+    i = instance.Instance(target_class = matching_tuple[2])
+    i.attributes['entity'] =  matching_tuple[0]
+    i.attributes['earmark']=  matching_tuple[1]
+    return i
+    #return instance.Instance(entity = matching_tuple[0], earmark = matching_tuple[1], target_class = matching_tuple[2])
 
 
 def main():
