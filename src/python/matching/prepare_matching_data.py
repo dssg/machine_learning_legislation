@@ -15,6 +15,8 @@ from classification import instance
 import logging
 from multiprocessing import Manager
 from classification.pipe import Pipe
+from classification.blocks_pipe import BlocksPipe
+
 from classification.prepare_earmark_data import  serialize_instances
 from entity_attributes import EntityAttributes
 from earmark_attributes import EarmarkAttributes
@@ -78,6 +80,9 @@ def get_instance(matching_tuple):
     i = instance.Instance(target_class = matching_tuple[2])
     i.attributes['entity'] =  matching_tuple[0]
     i.attributes['earmark']=  matching_tuple[1]
+    i.attributes['document_id'] = i.attributes['entity'].entity.document_id
+    i.attributes['earmark_id'] = i.attributes['earmark'].earmark.earmark_id
+
     return i
     #return instance.Instance(entity = matching_tuple[0], earmark = matching_tuple[1], target_class = matching_tuple[2])
 
@@ -137,11 +142,13 @@ def main():
             JaccardFeatureGenerator()
         
         ]
+
+
         
 
 
     elif args.subparser_name == "add":
-        instances = load_instances(args.data_folder)
+        instances = load_instances(args.data)
         logging.info("Creating pipe")
 
 

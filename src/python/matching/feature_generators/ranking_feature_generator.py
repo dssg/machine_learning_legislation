@@ -15,8 +15,6 @@ class simple_entity_text_feature_generator:
 
         self.feature = kwargs['feature']
         self.feature_group = kwargs['feature_group']
-
-
         self.reverse = kwargs.get("reverse", True)
         self.name = "RANKNG_FEAUTURE_"+self.attribute.upper()
         self.feature_prefix = "RANKNG_FEAUTURE_"+self.attribute.upper()
