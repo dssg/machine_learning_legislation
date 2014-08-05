@@ -104,13 +104,15 @@ def main():
         
         
         earmark_ids = list(get_earmarks_from_db())
+        entity_ids = list(get_entities_from_db())
+
+
 
         p = mp.Pool(args.threads)
         earmark_attributes = dict(p.map(get_earmark_attributes, earmark_ids))
         logging.info("Got %d Earmarks" % len(earmark_attributes))
 
 
-        entity_ids = list(get_entities_from_db())
 
         p = mp.Pool(args.threads)
         entity_attributes = dict(p.map(get_entity_attributes, entity_ids))
@@ -118,16 +120,20 @@ def main():
 
 
         matching_tuples = get_matching_tuples(entity_attributes, earmark_attributes)
-        
+
+        logging.info("Got %d Matching Tuples" % len(matching_tuples))
+
+
         instances = []
         for m in matching_tuples:
             instances.append(get_instance(m))
+
+
 
         
         logging.info("Creating pipe")
 
         feature_generators = [
-            ShinglesGenerator()
         
         ]
         
