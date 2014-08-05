@@ -7,6 +7,7 @@ from nltk import metrics, stem, tokenize
 from nltk.tokenize import WhitespaceTokenizer
 
 def normalize(s):
+    s = s.replace("|", "")
     for p in string.punctuation:
         s = s.replace(p, ' ')
     s = re.sub(r'[ ]{2,}', " ", s)

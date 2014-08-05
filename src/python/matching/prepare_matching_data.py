@@ -15,6 +15,7 @@ import logging
 from multiprocessing import Manager
 from classification.pipe import Pipe
 from classification.prepare_earmark_data import  serialize_instances
+from classification.feature_generators.shinglizer import ShinglesGenerator
 
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s')
@@ -121,6 +122,7 @@ def main():
         logging.info("Creating pipe")
 
         feature_generators = [
+            ShinglesGenerator()
         
         ]
         
