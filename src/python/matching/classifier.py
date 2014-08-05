@@ -1,6 +1,7 @@
 import os, sys, inspect
 sys.path.insert(0, os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],".."))))
 import argparse
+import numpy as np
 from classification.pipe import Pipe
 from classification.prepare_earmark_data import load_instances
 from sklearn.ensemble import RandomForestClassifier
