@@ -19,14 +19,21 @@ class JaccardFeatureGenerator:
         lst_ent_shingles = ["shingles"]
         lst_earmark_shingles = ["sd_shingles", "fd_shingles", "recepient_shingles"]
         pairs = itertools.product(lst_ent_shingles, lst_earmark_shingles)
-        max_jaccard = 0
+        max_inferred_name_jaccard = 0
+
         for pair in pairs:
             feature_name = self.name + "_" + pair[0] + "_" + pair[1]
             jaccard_score = string_functions.jaccard_distance(entity_attr.attributes[pair[0]], earmark_attr.attributes[pair[1]])
             instance.feature_groups[self.name][feature_name] = Feature(feature_name, jaccard_score)
-            if jaccard_score > max_jaccard:
-                max_jaccard = jaccard_score
-        
+            if jaccard_score > max_inferred_name_jaccard:
+                max_inferred_name_jaccard = jaccard_score
+
+        feature_name = self.name + "_max_inferred_name_jaccard"
+        instance.feature_groups[self.name][feature_name] = Feature(feature_name, max_inferred_name_jaccard)
+
+
+        max_cell_jaccard = 0
+
         pairs = itertools.product(["cell_shingles"], lst_earmark_shingles)
         for pair in pairs:
             highest_jaccard = 0
@@ -36,10 +43,11 @@ class JaccardFeatureGenerator:
                     highest_jaccard = jaccard_score
             feature_name = self.name + "_" + pair[0] + "_" + pair[1]
             instance.feature_groups[self.name][feature_name] = Feature(feature_name, highest_jaccard)
-            if highest_jaccard > max_jaccard:
-                max_jaccaed = highest_jaccard
-        feature_name = self.name + "_max_jaccard"
-        instance.feature_groups[self.name][feature_name] = Feature(feature_name, max_jaccard)
+            if highest_jaccard > max_cell_jaccard:
+                max_cell_jaccard = highest_jaccard
+
+        feature_name = self.name + "_max_cell_jaccard"
+        instance.feature_groups[self.name][feature_name] = Feature(feature_name, max_cell_jaccard)
 
         logging.debug( "Feature count %d for entity after %s" %(instance.feature_count(), self.name))
 
