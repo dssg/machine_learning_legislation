@@ -1,14 +1,16 @@
 from matching import get_earmarks, get_earmark_docs, get_entities, bcolors, shinglize, shingle_match
 import os
+import os, sys, inspect
+sys.path.insert(0, os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],".."))))
 import argparse
 import psycopg2
 import psycopg2.extras
 CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
-from prompt import query_yes_no
+from util.prompt import query_yes_no
 import multiprocessing as mp
 import string
 import re
-import path_tools
+from util import path_tools
 import random
 
 
