@@ -16,9 +16,9 @@ import logging
 from multiprocessing import Manager
 from classification.pipe import Pipe
 from classification.prepare_earmark_data import  serialize_instances
-from classification.feature_generators.shinglizer import ShinglesGenerator
 from entity_attributes import EntityAttributes
 from earmark_attributes import EarmarkAttributes
+from matching.feature_generators.jaccard_feature_generator import JaccardFeatureGenerator
 
 
 
@@ -88,11 +88,11 @@ def main():
     
 
     parser_serialize = subparsers.add_parser('serialize', help='pickle instances')
-    parser_serialize.add_argument('--data_folder', required=True, help='path to output pickled files')
+    parser_serialize.add_argument('--data', required=True, help='path to output pickled files')
     parser_serialize.add_argument('--threads', type=int, default = mp.cpu_count(), help='number of threads to run in parallel')
 
     parser_add = subparsers.add_parser('add', help='add to pickled instances')
-    parser_add.add_argument('--data_folder', required=True, help='path to output pickled files')
+    parser_add.add_argument('--data', required=True, help='path to output pickled files')
     parser_add.add_argument('--threads', type=int, default = mp.cpu_count(), help='number of threads to run in parallel')
 
     args = parser.parse_args()
@@ -134,6 +134,7 @@ def main():
         logging.info("Creating pipe")
 
         feature_generators = [
+            JaccardFeatureGenerator()
         
         ]
         
@@ -152,7 +153,7 @@ def main():
     logging.info("Pushing into pipe")
     pipe.push_all_parallel()
     logging.info("Start Serializing")
-    serialize_instances(pipe.instances, args.data_folder)
+    serialize_instances(pipe.instances, args.data)
     logging.info("Done!")
         
 if __name__=="__main__":
