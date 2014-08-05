@@ -20,27 +20,59 @@ def classify_randomforest_cv(X,y,estimators=500,test_data=0.4,features_func='log
 
 
     cv = cross_validation.StratifiedKFold(y, n_folds = 5, random_state = 0)
+    
     cv_precision = []
     cv_recall = []
     cv_fscore = []
     cv_support = []
+
     for i, (train, test) in enumerate(cv):
         model = clf.fit(X[train], y[train])
         y_pred = model.predict(X[test])
         #target_names = ['no match', 'match']target_names=target_names
         print(classification_report(y[test], y_pred))
 
-        """
-        cv_report = precision_recall_fscore_support(y[test],y_pred,average='micro')
+        #cv_report = precision_recall_fscore_support(y[test],y_pred,average='micro')
+        #print(classification_report(y[test], y_pred))
+        cv_report = precision_recall_fscore_support(y[test],y_pred)
         cv_precision.append(cv_report[0])
         cv_recall.append(cv_report[1])
         cv_fscore.append(cv_report[2])
         cv_support.append(cv_report[3])
+
+
+
     print "Precision: Mean-%0.2f, Standard Error-%0.2f" %(np.mean(cv_precision),np.std(cv_precision))
     print "Recall: Mean-%0.2f, Standard Error-%0.2f" %(np.mean(cv_recall),np.std(cv_recall))
     print "F-Score: Mean-%0.2f, Standard Error-%0.2f" %(np.mean(cv_fscore),np.std(cv_fscore))
     print "Support: Mean-%0.2f, Standard Error-%0.2f" %(np.mean(cv_support),np.std(cv_support))
-"""
+    
+    precision0 = map(lambda x:x[0],cv_precision)
+    precision1 = map(lambda x:x[1],cv_precision)
+    
+    recall0 = map(lambda x:x[0],cv_recall)
+    recall1= map(lambda x:x[1],cv_recall)
+    
+    fscore0 = map(lambda x:x[0],cv_fscore)
+    fscore1 = map(lambda x:x[1],cv_fscore)
+    
+    support0 = map(lambda x:x[0],cv_support)
+    support1 = map(lambda x:x[1],cv_support)
+    
+    print "Precision Class 0: Mean-%0.2f, Standard Error-%0.2f" %(np.mean(precision0),np.std(precision0))
+    print "Precision Class 1: Mean-%0.2f, Standard Error-%0.2f" %(np.mean(precision1),np.std(precision1))
+
+    print "Recall Class 0: Mean-%0.2f, Standard Error-%0.2f" %(np.mean(recall0),np.std(recall0))
+    print "Recall Class 1: Mean-%0.2f, Standard Error-%0.2f" %(np.mean(recall1),np.std(recall1))
+
+    
+    print "F-Score Class 0: Mean-%0.2f, Standard Error-%0.2f" %(np.mean(fscore0),np.std(fscore0))
+    print "F-Score Class 1: Mean-%0.2f, Standard Error-%0.2f" %(np.mean(fscore1),np.std(fscore1))
+
+    
+    print "Support Class 0: Mean-%0.2f, Standard Error-%0.2f" %(np.mean(support0),np.std(support0))
+    print "Support Class 1: Mean-%0.2f, Standard Error-%0.2f" %(np.mean(support1),np.std(support1))
+
 
     if loo :
         n = X.shape[0]
