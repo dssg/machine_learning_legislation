@@ -9,13 +9,18 @@ CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dss
 import multiprocessing as mp
 import string
 import re
-from dao import Entity, Earmark
+from dao.Entity import Entity
+from dao.Earmark import Earmark
 from classification import instance
 import logging
 from multiprocessing import Manager
 from classification.pipe import Pipe
 from classification.prepare_earmark_data import  serialize_instances
 from classification.feature_generators.shinglizer import ShinglesGenerator
+from entity_attributes import EntityAttributes
+from earmark_attributes import EarmarkAttributes
+
+
 
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s')
@@ -45,12 +50,12 @@ def get_entities_from_db():
 
 
 
-def get_entity_dao(entity_id):
-    return (entity_id, Entity.Entity(entity_id))
+def get_entity_attributes(entity_id):
+    return (entity_id, EntityAttributes(Entity(entity_id)))
 
 
-def get_earmark_dao(earmark_id):
-    return (earmark_id, Earmark.Earmark(earmark_id))
+def get_earmark_attributes(earmark_id):
+    return (earmark_id, EarmarkAttributes(Earmark(earmark_id)))
 
 
 def get_matching_tuples(entity_daos, earmark_daos):
@@ -101,18 +106,18 @@ def main():
         earmark_ids = list(get_earmarks_from_db())
 
         p = mp.Pool(args.threads)
-        earmark_daos = dict(p.map(get_earmark_dao, earmark_ids))
-        logging.info("Got %d Earmarks" % len(earmark_daos))
+        earmark_attributes = dict(p.map(get_earmark_attributes, earmark_ids))
+        logging.info("Got %d Earmarks" % len(earmark_attributes))
 
 
         entity_ids = list(get_entities_from_db())
 
         p = mp.Pool(args.threads)
-        entity_daos = dict(p.map(get_entity_dao, entity_ids))
-        logging.info("Got %d entities" % len(entity_daos))
+        entity_attributes = dict(p.map(get_entity_attributes, entity_ids))
+        logging.info("Got %d entities" % len(entity_attributes))
 
 
-        matching_tuples = get_matching_tuples(entity_daos, earmark_daos)
+        matching_tuples = get_matching_tuples(entity_attributes, earmark_attributes)
         
         instances = []
         for m in matching_tuples:
