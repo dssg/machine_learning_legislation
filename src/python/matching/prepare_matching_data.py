@@ -16,11 +16,15 @@ import logging
 from multiprocessing import Manager
 from classification.pipe import Pipe
 from classification.blocks_pipe import BlocksPipe
+from classification.instances_grouper import InstancesGrouper
 
-from classification.prepare_earmark_data import  serialize_instances
+from classification.prepare_earmark_data import  serialize_instances, load_instances
 from entity_attributes import EntityAttributes
 from earmark_attributes import EarmarkAttributes
 from matching.feature_generators.jaccard_feature_generator import JaccardFeatureGenerator
+from matching.feature_generators.ranking_feature_generator import RankingFeatureGenerator
+from matching.feature_generators.difference_feature_generator import DifferenceFeatureGenerator
+
 
 
 
@@ -90,7 +94,6 @@ def get_instance(matching_tuple):
 def main():
     parser = argparse.ArgumentParser(description='get pickeled instances')
     subparsers = parser.add_subparsers(dest='subparser_name' ,help='sub-command help')
-    
 
     parser_serialize = subparsers.add_parser('serialize', help='pickle instances')
     parser_serialize.add_argument('--data', required=True, help='path to output pickled files')
@@ -138,30 +141,75 @@ def main():
         
         logging.info("Creating pipe")
 
-        feature_generators = [
+
+        fgs = [
             JaccardFeatureGenerator()
-        
         ]
 
+        pipe = Pipe(fgs, instances, num_processes=args.threads)
+        logging.info("Pushing into pipe")
+        pipe.push_all_parallel()
+
 
         
+
+        # group by earmark and document:
+
+        fgs = [
+            RankingFeatureGenerator(feature_group = "JACCARD_FG", feature ="JACCARD_FG_max_jaccard" , prefix = 'G1_')
+
+        ]
+        grouper = InstancesGrouper(['earmark_id', 'document_id'])
+        pipe = BlocksPipe(grouper, fgs, pipe.instances, num_processes=args.threads )
+        pipe.push_all_parallel()
+
+
+        #group by earmark
+
+        fgs = [
+            RankingFeatureGenerator(feature_group = "JACCARD_FG", feature ="JACCARD_FG_max_jaccard" , prefix = 'G2_')
+
+        ]
+        grouper = InstancesGrouper(['earmark_id'])
+        pipe = BlocksPipe(grouper, fgs, pipe.instances, num_processes=args.threads )
+        pipe.push_all_parallel()
+    
+
+
+        #Serialize
+        logging.info("Start Serializing")
+        serialize_instances(pipe.instances, args.data)
+        logging.info("Done!")
+
+
+
+
+
+
+
 
 
     elif args.subparser_name == "add":
         instances = load_instances(args.data)
-        logging.info("Creating pipe")
+        exit()
 
+        fgs = [
+            RankingFeatureGenerator(feature_group = "JACCARD_FG", feature ="JACCARD_FG_max_jaccard" , prefix = 'G2_')
 
-        feature_generators = [
         ]
+        grouper = InstancesGrouper(['earmark_id'])
+        pipe = BlocksPipe(grouper, fgs, instances, num_processes=args.threads )
+        pipe.push_all_parallel()
+        
 
 
-    pipe = Pipe(feature_generators, instances, num_processes=args.threads)
-    logging.info("Pushing into pipe")
-    pipe.push_all_parallel()
-    logging.info("Start Serializing")
-    serialize_instances(pipe.instances, args.data)
-    logging.info("Done!")
+        #Serialize
+        logging.info("Start Serializing")
+        serialize_instances(pipe.instances, args.data)
+        logging.info("Done!")
+
+
+    
         
 if __name__=="__main__":
     main()

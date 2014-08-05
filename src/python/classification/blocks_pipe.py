@@ -39,9 +39,12 @@ class BlocksPipe:
         pool = mp.Pool(self.num_processes, initilize_parallel, [out_queue])
         groups = self.grouper.group_instances(self.instances)
         pool.map(func=parallel_target, iterable= [(self, instances) for grp, instances in groups.iteritems()])
+        del groups
         new_instances = []
         for i in range(len(self.instances)):
             new_instances.append(out_queue.get())
+        del out_queue
+        del self.instances
         self.instances = new_instances
         
     def __call__(self, instances):

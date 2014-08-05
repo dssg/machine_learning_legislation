@@ -62,6 +62,8 @@ class Pipe:
         new_instances = []
         for i in range(len(self.instances)):
             new_instances.append(out_queue.get())
+        del out_queue
+        del self.instances
         self.instances = new_instances
         
     def instances_to_scipy_sparse(self, ignore_groups=[]):

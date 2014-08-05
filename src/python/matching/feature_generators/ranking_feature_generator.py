@@ -9,15 +9,16 @@ import string
 import re
 from classification.feature import Feature
 
-class simple_entity_text_feature_generator:
+class RankingFeatureGenerator:
     def __init__(self, **kwargs):
         self.force = kwargs.get("force", True)
 
         self.feature = kwargs['feature']
         self.feature_group = kwargs['feature_group']
         self.reverse = kwargs.get("reverse", True)
-        self.name = "RANKNG_FEAUTURE_"+self.attribute.upper()
-        self.feature_prefix = "RANKNG_FEAUTURE_"+self.attribute.upper()
+        self.name = kwargs['prefix'] + "RANKNG_FEAUTURE_"+self.feature.upper()
+        self.feature_prefix = self.name
+
 
 
             
@@ -28,7 +29,7 @@ class simple_entity_text_feature_generator:
         given an instance a list of categories as features
         """
 
-        instances = sorted(instances, reverse = self.reverse, key = lambda x : x.feature_groups[self.feature_group][self.feature])
+        instances = sorted(instances, reverse = self.reverse, key = lambda x : x.feature_groups[self.feature_group][self.feature].value)
 
         for i in range(len(instances)):
             instance = instances[i]
@@ -41,5 +42,5 @@ class simple_entity_text_feature_generator:
             
             instance.feature_groups[self.name][self.feature_prefix] = Feature(self.feature_prefix, i) 
 
-            logging.debug( "Feature count %d for entity id: %d after %s" %(instance.feature_count(),instance.attributes["id"], self.name))
+            logging.debug( "Feature count %d for entity after %s" %(instance.feature_count(), self.name))
 
