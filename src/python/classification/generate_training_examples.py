@@ -38,8 +38,8 @@ def write_entity_text_to_file(entities, path):
     f.close()
     
     	
-def get_negative_examples(congress, count, outfile):
-    entity_ids = [entity["mid"] for entity in  get_candiadte_negative_examples_from_db(congress, count)]
+def get_negative_examples(year, count, outfile):
+    entity_ids = [entity["mid"] for entity in  get_candiadte_negative_examples_from_db(year, count)]
     write_entity_ids_to_file(entity_ids, outfile)
     
 
@@ -71,7 +71,7 @@ def get_earmark_entities(year):
     conn.close()
     return records
 
-def get_candiadte_negative_examples_from_db( congress = 111, count=10000 ):
+def get_candiadte_negative_examples_from_db( year, count ):
     """
     generates negative examples, randomly, for a given year
     """
@@ -81,18 +81,19 @@ def get_candiadte_negative_examples_from_db( congress = 111, count=10000 ):
         select mid, entity_inferred_name, random() as r
         from
         (select e.entity_inferred_name, max(e.id) as mid
-        from entities as e , documents, congress_meta_document as cmd
+        from entities as e , documents
         where e.document_id = documents.id 
-        and documents.congress_meta_document = cmd.id
         and e.source = 'table'
-        and cmd.congress = %s
+        and EXTRACT(YEAR FROM documents.date) = %s -1
         and not exists (select matched_entity_id from earmark_document_matched_entities where e.id = matched_entity_id)
+        
         group by e.entity_inferred_name
         ) as vu 
         order by r limit %s
         """
+        #and not exists (select entity_inferred_name from entities, earmark_document_matched_entities where earmark_document_matched_entities.matched_entity_id = entities.id and e.entity_inferred_name = entities.entity_inferred_name and entities.source = 'table' )
         cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-        cur.execute(cmd, (congress, count))
+        cur.execute(cmd, (year, count))
         records = cur.fetchall()
         conn.close()
         return records
@@ -145,8 +146,8 @@ if __name__=="__main__":
     parser_positive.add_argument('--outfile',  required=True, help='the file to which to write results')
     
     parser_negative = subparsers.add_parser('negative', help='create negative examples')
-    parser_negative.add_argument('--congress', type = int, required=True, help='congress number')
-    parser_negative.add_argument('--count', type = int, required=True, help='number of negative examples')
+    parser_negative.add_argument('--year', type = int, required=True, help='year. Note that the script decrements 1')
+    parser_negative.add_argument('--count', type = int, default=1000000, help='number of negative examples')
     parser_negative.add_argument('--outfile',  required=True, help='the file to which to write results')
     
     parser_all_entities = subparsers.add_parser('alltable', help='gets all table entities')
@@ -162,7 +163,7 @@ if __name__=="__main__":
     if args.subparser_name =="positive":
         get_positive_eamples(args.year, args.outfile)
     elif args.subparser_name =="negative":
-        get_negative_examples(args.congress, args.count, args.outfile)
+        get_negative_examples(args.year, args.count, args.outfile)
     elif args.subparser_name =="google":
         entity_ids = [int(line.strip()) for line in open(args.file).readlines() if len(line) > 1 ]
         match_entities_to_google(entity_ids)
