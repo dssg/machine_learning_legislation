@@ -31,7 +31,7 @@ def classify_randomforest_cv(X,y,estimators=500,test_data=0.4,features_func='log
         y_pred = model.predict(X[test])
         #target_names = ['no match', 'match']target_names=target_names
         #print(classification_report(y[test], y_pred))
-        cv_report = precision_recall_fscore_support(y_true,y_pred)
+        cv_report = precision_recall_fscore_support(y[test],y_pred)
         cv_precision.append(cv_report[0])
         cv_recall.append(cv_report[1])
         cv_fscore.append(cv_report[2])
