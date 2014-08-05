@@ -25,7 +25,7 @@ class JaccardFeatureGenerator:
             jaccard_score = string_functions.jaccard_distance(entity_attr.attributes[pair[0]], earmark_attr.attributes[pair[1]])
             instance.feature_groups[self.name][feature_name] = Feature(feature_name, jaccard_score)
             if jaccard_score > max_jaccard:
-                max_jaccard = jaccard_socre
+                max_jaccard = jaccard_score
         
         pairs = itertools.product(["cell_shingles"], lst_earmark_shingles)
         for pair in pairs:
@@ -39,7 +39,7 @@ class JaccardFeatureGenerator:
             if highest_jaccard > max_jaccard:
                 max_jaccaed = highest_jaccard
         feature_name = self.name + "_max_jaccard"
-        instance.feature_groups[self.name][feature_name] = Feature(feature_name, max_jaccaed)
+        instance.feature_groups[self.name][feature_name] = Feature(feature_name, max_jaccard)
 
         logging.debug( "Feature count %d for entity after %s" %(instance.feature_count(), self.name))
 
