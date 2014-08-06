@@ -12,14 +12,14 @@ from sklearn.metrics import precision_recall_fscore_support
 import logging
 
 
-def classify_randomforest_cv(X,y,estimators=500,test_data=0.4,features_func='log2', loo = False):
+def classify_randomforest_cv(X,y,estimators=100,test_data=0.4,features_func='log2', loo = False):
 
     logging.info('Starting Cross Validation')
     clf = RandomForestClassifier(n_estimators=estimators,max_depth=None,
                                  min_samples_split = 1, random_state = 0,max_features = features_func,oob_score = True)
 
 
-    cv = cross_validation.StratifiedKFold(y, n_folds = 5, random_state = 0)
+    cv = cross_validation.StratifiedKFold(y, n_folds = 10, random_state = 0)
     
     cv_precision = []
     cv_recall = []
