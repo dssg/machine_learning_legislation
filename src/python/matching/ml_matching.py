@@ -17,6 +17,7 @@ import logging
 from matching_util import *
 import util.amend_earmark
 from sklearn.externals import joblib
+import cPickle as pickle
 
 
 import multiprocessing as mp
@@ -100,6 +101,7 @@ def record_matching (instances, y_pred):
             earmark_document_id = util.amend_earmark.check_earmark_doc_match(earmark_id, entity_id)
             params.append((earmark_document_id, entity_id, earmark_document_id, entity_id))
 
+    logging.info("Matched %d Entities" % len(params))
 
     cmd = """insert into earmark_document_matched_entities 
     (earmark_document_id,matched_entity_id ,manual_match)
@@ -108,7 +110,6 @@ def record_matching (instances, y_pred):
     (SELECT 1 FROM earmark_document_matched_entities WHERE earmark_document_id=%s and matched_entity_id = %s );
     """
 
-    logging.debug("Inserting for entity %d and earmark %d" %(entity_id, earmark_id))
     cur.executemany(cmd, params)
     conn.commit()
     conn.close()
@@ -123,7 +124,6 @@ def get_features(instances, num_processes):
         InfixFeatureGenerator()
     ]
     pipe = Pipe(fgs, instances, num_processes=num_processes)
-    logging.info("Pushing into pipe")
     pipe.push_all_parallel()
 
     #group by earmark
@@ -138,50 +138,57 @@ def get_features(instances, num_processes):
     return pipe.instances
 
 
+def process_earmark_in_document(earmark_id, entity_ids, update, model_path):
+    earmark_ids = [earmark_id]
+    earmark_entity_tuples = get_earmark_entity_tuples(earmark_ids, entity_ids)[:10]
 
-
-def process_document(args_tuple):
-
-
-    doc_id = args_tuple[0]
-    logging.info("Processing Document %d" %doc_id )
-
-    earmark_ids = get_earmark_ids_in_doc(doc_id)[:10]
-    logging.info("Got %d earmarks" % len(earmark_ids))
-
-    entity_ids = get_entity_ids_in_doc_from_db(doc_id)[:10]
-    logging.info("Got %d entities" % len(entity_ids))
-
-    earmark_entity_tuples = get_earmark_entity_tuples(earmark_ids, entity_ids)
-    instances = get_matching_instances(entity_ids, earmark_ids, earmark_entity_tuples, 1)
+    instances = get_matching_instances(entity_ids, earmark_ids , earmark_entity_tuples, 1)
     logging.info("Got %d Instances" % len(instances))
 
     if len(instances) == 0:
         return
-
 
     #compute features
     instances = get_features(instances, 1)
 
     logging.info("Got Features")
 
-    #convert to scipy
-    X, y, space = pipe.instances_to_scipy_sparse(instances)
-
     #deserialize model and predict
+    feature_space = pickle.load(open(model_path+".feature_space", "rb"))
+    X, y, space = pipe.instances_to_scipy_sparse(instances, feature_space = feature_space)
 
-    model = joblib.load(args_tuple[2])
-    logging.info("Loaded Models")
+    model = joblib.load(model_path)
+    logging.info("Loaded Model")
 
 
     y_pred = model.predict(X.todense())
-    logging.info("Got Predictions Models")
-
+    logging.info("Got Predictions")
+    logging.info("Matched %d instances " % sum(y_pred))
 
     #record predictionsin db
-    if args_tuple[1]:
+    if update:
         record_matching(instances, y_pred)
         logging.info("Updated DB")
+
+
+def process_document(args_tuple):
+
+    update = args_tuple[1]
+    model_path = args_tuple[2]
+    doc_id = args_tuple[0]
+
+    logging.info("Processing Document %d" %doc_id )
+
+    earmark_ids = get_earmark_ids_in_doc(doc_id)
+    logging.info("Got %d earmarks" % len(earmark_ids))
+
+    entity_ids = get_entity_ids_in_doc_from_db(doc_id)
+    logging.info("Got %d entities" % len(entity_ids))
+
+    for earmark_id in earmark_ids:
+        process_earmark_in_document(earmark_id, entity_ids, update, model_path)
+
+    
 
 
 
@@ -195,6 +202,7 @@ def main():
     parser.add_argument('--model', required = True, help='path to pickeld matching model')
 
 
+
     args = parser.parse_args()
     
     print "Process id: ", os.getpid()
@@ -203,6 +211,7 @@ def main():
 
     for doc_id in doc_ids:
         process_document((doc_id, args.update, args.model))
+        exit()
 
     #p = mp.Pool(args.threads)
     #results = p.map(process_document, [(doc_id, args.update) for doc_id in doc_ids])

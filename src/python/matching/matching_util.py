@@ -7,7 +7,7 @@ from classification import instance
 from entity_attributes import EntityAttributes
 from earmark_attributes import EarmarkAttributes
 
-def get_matching_instance(entity_attributes, earmark_attributes, target_class = 1):
+def get_matching_instance(entity_attributes, earmark_attributes, target_class = 0):
 
     i = instance.Instance(target_class = target_class)
     i.attributes['entity'] =  entity_attributes
