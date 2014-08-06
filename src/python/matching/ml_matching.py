@@ -103,9 +103,9 @@ def record_matching (instances, y_pred):
 
     cmd = """insert into earmark_document_matched_entities 
     (earmark_document_id,matched_entity_id ,manual_match)
-    select %d, %d, False
+    select %s, %s, False
     WHERE NOT EXISTS 
-    (SELECT 1 FROM earmark_document_matched_entities WHERE earmark_document_id=%d and matched_entity_id = %d );
+    (SELECT 1 FROM earmark_document_matched_entities WHERE earmark_document_id=%s and matched_entity_id = %s );
     """
 
     logging.debug("Inserting for entity %d and earmark %d" %(entity_id, earmark_id))
