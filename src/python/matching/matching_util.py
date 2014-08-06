@@ -27,13 +27,25 @@ def get_matching_instances(entity_ids, earmark_ids, earmark_entity_tuples, num_p
 
 
 def get_entity_attributes_dict(entity_ids, num_processes):
-    p = mp.Pool(num_processes)
-    return dict(p.map(get_entity_attribute, entity_ids))
+    if num_processes == 1:
+        d = {}
+        for entity_id in entity_ids:
+            d[entity_id] = get_entity_attribute(entity_id)[1]
+        return d
+    else:
+        p = mp.Pool(num_processes)
+        return dict(p.map(get_entity_attribute, entity_ids))
 
 
 def get_earmark_attributes_dict(earmark_ids,num_processes):
-    p = mp.Pool(num_processes)
-    return dict(p.map(get_earmark_attribute, earmark_ids))
+    if num_processes == 1:
+        d = {}
+        for earmark_id in earmark_ids:
+            d[earmark_id] = get_earmark_attribute(earmark_id)[1]
+        return d
+    else:
+        p = mp.Pool(num_processes)
+        return dict(p.map(get_earmark_attribute, earmark_ids))
 
 
 def get_entity_attribute(entity_id):

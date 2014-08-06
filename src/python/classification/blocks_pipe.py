@@ -35,16 +35,15 @@ class BlocksPipe:
         self.grouper = grouper
     
     def push_all_parallel(self):
-        logging.info("creating thread pool with %d threads" %(self.num_processes))
-        from guppy import hpy
-        h = hpy()
-        #out_queue = mp.Queue()
-        logging.info("Before running thread pool")
-        print h.heap()
-        #pool = mp.Pool(self.num_processes, initilize_parallel, [out_queue])
-        pool = mp.Pool(self.num_processes)
         groups = self.grouper.group_instances(self.instances)
-        lst_of_lst_of_instances = pool.map(func=parallel_target, iterable= [(self, instances) for grp, instances in groups.iteritems()])
+        if self.num_processes == 1:
+            logging.info("pushing through block pipe with no pool")
+            lst_of_lst_of_instances = [self.push_single(instances) for grp, instances in groups.iteritems()]
+        else:
+            logging.info("creating thread pool with %d threads" %(self.num_processes))
+            logging.info("Before running thread pool")
+            pool = mp.Pool(self.num_processes)
+            lst_of_lst_of_instances = pool.map(func=parallel_target, iterable= [(self, instances) for grp, instances in groups.iteritems()])
         del self.instances[:]
         self.instances = []
         for lst in lst_of_lst_of_instances:
@@ -54,9 +53,10 @@ class BlocksPipe:
         
     def __call__(self, instances):
         return self.push_single(instances)
+
         
     def push_single(self, instances):
-        logging.debug("operating on instance")
+        #logging.debug("operating on instance")
         for fg in self.feature_generators:
             fg.operate(instances)
         return instances
