@@ -39,7 +39,7 @@ class Pipe:
         """
         pushes instance through the pipe of feature generators
         """
-        logging.debug("operating on instance")
+        #logging.debug("operating on instance")
         for fg in self.feature_generators:
             fg.operate(instance)
         # return statement is added to support multiprocessing
@@ -49,56 +49,60 @@ class Pipe:
         return self.push_single(instance)
             
     def push_all(self):
-        #pool = multiprocessing.Pool(self.num_processes)
-        #pool.map(func=self, iterable=self.instances)
         for i in self.instances:
             self.push_single(i)
             
     def push_all_parallel(self):
-        logging.info("creating thread pool with %d threads" %(self.num_processes))
-        out_queue = mp.Queue()
-        pool = mp.Pool(self.num_processes, initilize_parallel, [out_queue])
-        pool.map(func=parallel_target, iterable= [(self, i) for i in self.instances])
-        new_instances = []
-        for i in range(len(self.instances)):
-            new_instances.append(out_queue.get())
-        del out_queue
-        del self.instances[:]
-        self.instances = new_instances
+        if self.num_processes == 1:
+            logging.info("pushing through pipe with no pool")
+            self.push_all()
+        else:
+            logging.info("creating thread pool with %d threads" %(self.num_processes))
+            out_queue = mp.Queue()
+            pool = mp.Pool(self.num_processes, initilize_parallel, [out_queue])
+            pool.map(func=parallel_target, iterable= [(self, i) for i in self.instances])
+            new_instances = []
+            for i in range(len(self.instances)):
+                new_instances.append(out_queue.get())
+            del out_queue
+            del self.instances[:]
+            self.instances = new_instances
         
-    def instances_to_scipy_sparse(self, ignore_groups=[]):
-        """
-        ingore_groups: list containing generator names to ignore their features
-        """
-        feature_space = {}
-        index = 0
-        for i in self.instances:
-            for f_group, features in i.feature_groups.iteritems():
-                if f_group in ignore_groups:
-                    continue
-                for f_name, f in features.iteritems():
-                    if not feature_space.has_key(f.name):
-                        feature_space[f.name] = index
-                        index +=1
 
-        logging.debug("%d instances, %d features" %(len(self.instances), len(feature_space)))
-        #X = np.zeros( (len(self.instances), len(feature_space)) )
-        X = scipy.sparse.lil_matrix((len(self.instances), len(feature_space)))
-        Y = []
-        for i in range(len(self.instances)):
-            for f_group, features in self.instances[i].feature_groups.iteritems():
-                if f_group in ignore_groups:
-                    continue
-                for f_name, f in features.iteritems():
-                    X[i, feature_space[f.name]] =  f.value
-            Y.append(self.instances[i].target_class)
-        logging.info("%d Instances loaded with %d features" %(X.shape[0], X.shape[1]))
-        return scipy.sparse.csr_matrix(X), np.array(Y), feature_space            
             
     def set_instances(self, instances):
         self.instances = instances
+
+    def instances_to_scipy_sparse(self, ignore_groups=[]):
+        return instances_to_scipy_sparse(self.instances, ignore_groups=ignore_groups)
     
-        
             
-        
+            
+def instances_to_scipy_sparse(instances, ignore_groups=[]):
+    """
+    ingore_groups: list containing generator names to ignore their features
+    """
+    feature_space = {}
+    index = 0
+    for i in instances:
+        for f_group, features in i.feature_groups.iteritems():
+            if f_group in ignore_groups:
+                continue
+            for f_name, f in features.iteritems():
+                if not feature_space.has_key(f.name):
+                    feature_space[f.name] = index
+                    index +=1
+
+    logging.debug("%d instances, %d features" %(len(instances), len(feature_space)))
+    X = scipy.sparse.lil_matrix((len(instances), len(feature_space)))
+    Y = []
+    for i in range(len(instances)):
+        for f_group, features in instances[i].feature_groups.iteritems():
+            if f_group in ignore_groups:
+                continue
+            for f_name, f in features.iteritems():
+                X[i, feature_space[f.name]] =  f.value
+        Y.append(instances[i].target_class)
+    logging.info("%d Instances loaded with %d features" %(X.shape[0], X.shape[1]))
+    return scipy.sparse.csr_matrix(X), np.array(Y), feature_space            
     

@@ -42,5 +42,5 @@ class RankingFeatureGenerator:
             
             instance.feature_groups[self.name][self.feature_prefix] = Feature(self.feature_prefix, i) 
 
-            logging.debug( "Feature count %d for entity after %s" %(instance.feature_count(), self.name))
+            #logging.debug( "Feature count %d for entity after %s" %(instance.feature_count(), self.name))
 

@@ -49,6 +49,6 @@ class JaccardFeatureGenerator:
         feature_name = self.name + "_max_cell_jaccard"
         instance.feature_groups[self.name][feature_name] = Feature(feature_name, max_cell_jaccard)
 
-        logging.debug( "Feature count %d for entity after %s" %(instance.feature_count(), self.name))
+        #logging.debug( "Feature count %d for entity after %s" %(instance.feature_count(), self.name))
 
                 
