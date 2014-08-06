@@ -78,20 +78,12 @@ class Pipe:
     
             
             
-def instances_to_scipy_sparse(instances, ignore_groups=[]):
+def instances_to_scipy_sparse(instances, ignore_groups=[], feature_space=None):
     """
     ingore_groups: list containing generator names to ignore their features
     """
-    feature_space = {}
-    index = 0
-    for i in instances:
-        for f_group, features in i.feature_groups.iteritems():
-            if f_group in ignore_groups:
-                continue
-            for f_name, f in features.iteritems():
-                if not feature_space.has_key(f.name):
-                    feature_space[f.name] = index
-                    index +=1
+    if feature_space == None:
+        feature_space = build_feature_space(instances, ignore_groups=[])
 
     logging.debug("%d instances, %d features" %(len(instances), len(feature_space)))
     X = scipy.sparse.lil_matrix((len(instances), len(feature_space)))
@@ -105,4 +97,17 @@ def instances_to_scipy_sparse(instances, ignore_groups=[]):
         Y.append(instances[i].target_class)
     logging.info("%d Instances loaded with %d features" %(X.shape[0], X.shape[1]))
     return scipy.sparse.csr_matrix(X), np.array(Y), feature_space            
+    
+def build_feature_space(instances, ignore_groups=[]):
+    feature_space = {}
+    index = 0
+    for i in instances:
+        for f_group, features in i.feature_groups.iteritems():
+            if f_group in ignore_groups:
+                continue
+            for f_name, f in features.iteritems():
+                if not feature_space.has_key(f.name):
+                    feature_space[f.name] = index
+                    index +=1
+    return feature_space
     

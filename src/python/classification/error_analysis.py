@@ -70,7 +70,27 @@ def entity_is_negative_example(entity_id):
     return check_row_exists(cmd, parameters)
     
 
+def analyze_entity_earmark_pair(entity_attr, earmark_attr):
+    print  entity_attr.entity.entity_inferred_name
+    print "Earmark: ", earmark_attr
+    print "\n"*2
+    #if prompt.query_yes_no("Do they match?", default="yes"):
+    #    pass #match_earmark_with_entity(earmark_attr.earmark.earmark_id, entity_attr.entity.id)
     
+def match_earmark_with_entity(earmark_id, entity_id):
+    conn = psycopg2.connect(CONN_STRING)
+    cmd = "update row_matching_labels set label=True where earmark_id = %s and entity_id = %s"
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        cur.execute(cmd, (earmark_id, entity_id))
+        conn.commit()
+    except Exception as ex:
+        logging.exception("Error in checking if an entity is an earmark match")
+        conn.rollback()
+    finally:
+        conn.close()
+    
+       
                 
             
         

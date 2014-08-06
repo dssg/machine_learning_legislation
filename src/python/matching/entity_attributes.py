@@ -8,6 +8,9 @@ class EntityAttributes:
         self.attributes = {}
         self.build_attributes()
         
+    def __str__(self):
+        return self.entity.__str__()
+        
     def build_attributes(self):
         self.attributes["normalized_entity_inferred_name"] = string_functions.normalize(self.entity.entity_inferred_name)
         self.attributes["shingles"] = string_functions.shinglize(self.attributes["normalized_entity_inferred_name"])

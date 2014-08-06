@@ -7,6 +7,9 @@ class EarmarkAttributes:
         self.earmark = earmark
         self.attributes = {}
         self.build_attributes()
+    
+    def __str__(self):
+        return self.earmark.__str__()
         
     def build_attributes(self):
         self.attributes["normalized_sd"] = string_functions.normalize(self.earmark.short_description)

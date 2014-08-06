@@ -8,8 +8,9 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn import cross_validation
 from sklearn.metrics import classification_report
 from sklearn.metrics import precision_recall_fscore_support
-
+from sklearn.externals import joblib
 import logging
+import cPickle as pickle
 
 
 def classify_randomforest_cv(X,y,estimators=100,test_data=0.4,features_func='log2', loo = False):
@@ -92,7 +93,10 @@ def classify_randomforest_cv(X,y,estimators=100,test_data=0.4,features_func='log
 def main():
     parser = argparse.ArgumentParser(description='build classifier')
 
-    parser.add_argument('--data',  required=True, help='file to pickled training instances')
+    parser.add_argument('--data',  required=True, help='folder to pickled training instances')
+    parser.add_argument('--action', default = 'cv' , help='cv|build')
+    parser.add_argument('--outfile', default = 'matching_rf.pkl' , help='outfile to write model to')
+    parser.add_argument('--trees', type=int, default = 100 , help='number of trees')
 
     args = parser.parse_args()  
 
@@ -101,9 +105,16 @@ def main():
     pipe = Pipe( instances=instances)
     logging.info("Start loading X, Y")
     X, y, feature_space = pipe.instances_to_scipy_sparse()
-    classify_randomforest_cv(X.todense(), y)
-
-
+    if args.action =="cv":
+        classify_randomforest_cv(X.todense(), y)
+    elif args.action =="build":
+        clf = RandomForestClassifier(n_estimators=args.trees, max_depth=None,
+                    min_samples_split = 1, random_state = 0,max_features = 'log2',oob_score = True)
+        model = clf.fit(X.todense(), y)
+        joblib.dump(model, args.outfile, compress=9)
+        pickle.dump(feature_space, open(args.outfile+'.feature_space','wb'))
+    else:
+        print "Unrecognized option!"
 
 
 if __name__=="__main__":
