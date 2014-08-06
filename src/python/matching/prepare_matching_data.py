@@ -95,16 +95,6 @@ def main():
         pipe.push_all_parallel()
 
 
-        # group by earmark and document:
-        fgs = [
-            RankingFeatureGenerator(feature_group = "JACCARD_FG", feature ="JACCARD_FG_max_inferred_name_jaccard" , prefix = 'G1_'),
-            RankingFeatureGenerator(feature_group = "JACCARD_FG", feature ="JACCARD_FG_max_cell_jaccard" , prefix = 'G1_')
-        ]
-        grouper = InstancesGrouper(['earmark_id', 'document_id'])
-        pipe = BlocksPipe(grouper, fgs, pipe.instances, num_processes=args.threads )
-        pipe.push_all_parallel()
-
-
         #group by earmark
         fgs = [
             RankingFeatureGenerator(feature_group = "JACCARD_FG", feature ="JACCARD_FG_max_inferred_name_jaccard" , prefix = 'G2_'),

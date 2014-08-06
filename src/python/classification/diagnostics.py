@@ -22,7 +22,7 @@ from sklearn.cross_validation import StratifiedShuffleSplit
 from scipy.sparse import *
 from sklearn.metrics import *
 from pprint import pprint
-from sklearn.metrics import roc_curve, auc
+from sklearn.metrics import roc_curve, auc, precision_recall_curve
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc
 import copy
@@ -35,15 +35,20 @@ from util.prompt import query_yes_no
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 
 
-def error_analysis_for_labeling(instances, X, y, folds, data_folder):
-	clf = svm.LinearSVC(C=0.01)
+def error_analysis_for_labeling(instances, X, y, folds, data_folder, clf = svm.LinearSVC(C=0.01)):
 	cv = cross_validation.StratifiedKFold(y, n_folds=folds, random_state = 0)
 	for i, (train, test) in enumerate(cv):
 		model = clf.fit(X[train], y[train])
 		y_pred = model.predict(X[test])
-		scores =  model.decision_function(X[test])
-		print("\nROC score on Test Data")
-		print roc_auc_score( y[test], scores)
+		#scores =  model.decision_function(X[test])
+		scores = model.predict_proba(X[test])[:,1]
+		precision, recall, thresholds = precision_recall_curve(y[test], scores)
+		print thresholds.shape[0]
+		for i in range(thresholds.shape[0]):
+		    print "Threshold: %f, Precision: %f, Recall: %f" %(thresholds[i], precision[i], recall[i])
+
+		#print("\nROC score on Test Data")
+		#print roc_auc_score( y[test], scores)
 		#do_error_analysis (y[test], y_pred, scores, test, instances)
 		relabel(y[test], y_pred, scores, test, instances, data_folder)
 		print "\n"*5
@@ -173,7 +178,8 @@ def do_feature_set_analysis(train_instances, test_instances, folds):
 
 
 def relabel(y_true, y_pred, scores, test_index, instances, data_folder, num = 20):
-	false_positives = np.logical_and(y_true==0, y_pred==1).nonzero()[0]
+	#false_positives = np.logical_and(y_true==0, y_pred==1).nonzero()[0]
+	false_positives = np.logical_and(y_true==0, scores > 0.25).nonzero()[0]
 
 	if false_positives.size == 0:
 		return
@@ -185,7 +191,8 @@ def relabel(y_true, y_pred, scores, test_index, instances, data_folder, num = 20
 	for t in fp_instances[:num]:
 		instance = instances[t[0]]
 		try:
-		    error_analysis.analyze_entity(instance.attributes['id'])
+		    #error_analysis.analyze_entity(instance.attributes['id'])
+		    error_analysis.analyze_entity_earmark_pair(instance.attributes['entity'], instance.attributes['earmark'])
 		except Exception as ex:
 		    logging.exception("Error while relabeling entity %d" %instance.attributes['id'])
 
@@ -277,7 +284,9 @@ def main():
 				pipe = Pipe( instances=instances)
 				logging.info("Start loading X, Y")
 				X, y, feature_space = pipe.instances_to_scipy_sparse()
-				error_analysis_for_labeling(instances, X, y, args.folds, args.train)
+				clf = RandomForestClassifier(n_estimators=100,max_depth=None,
+                                             min_samples_split = 1, random_state = 0,max_features = 'log2',oob_score = True)
+				error_analysis_for_labeling(instances, X.todense(), y, args.folds, args.train, clf)
 
 		if args.action =="grid":
 

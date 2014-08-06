@@ -35,3 +35,6 @@ class Entity:
             logging.exception("Error")
         finally:
             conn.close()
+    
+    def __str__(self):
+        return "Entity id: %d, Entity Text: %s" %(self.id, self.entity_inferred_name)

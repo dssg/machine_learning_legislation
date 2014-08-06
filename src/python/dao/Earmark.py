@@ -8,7 +8,7 @@ import logging
 CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
 
 class Earmark:
-     def __init__(self, earmark_id):
+    def __init__(self, earmark_id):
          self.cmd = """
          select earmark_id, coalesce(earmark_code,'') as earmark_code, 
          coalesce(agency,'') as agency, coalesce(bureau,'') as bureau, 
@@ -44,4 +44,7 @@ class Earmark:
              logging.exception("Error")
          finally:
              conn.close()
+
+    def __str__(self):
+        return "Earmark id:%d\nshort description:%s\nfull_description:%s\nrecepient:%s\n"%(self.earmark_id, self.short_description, self.full_description, self.recepient)
          
