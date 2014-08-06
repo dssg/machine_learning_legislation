@@ -109,4 +109,5 @@ def build_feature_space(instances, ignore_groups=[]):
                 if not feature_space.has_key(f.name):
                     feature_space[f.name] = index
                     index +=1
+    return feature_space
     
