@@ -128,7 +128,7 @@ def get_features(instances, num_processes):
 
     #group by earmark
     fgs = [
-        RankingFeatureGenerator(feature_group = "JACCARD_FG", feature ="JACCARD_FG_max_inferred_name_jaccard" , prefix = 'G2_'),
+        RankingFeatureGenerator(feature_group = "JACCARD_FG", feature ="JACCARD_FG_max_inferred_name_jaccard" , prefix = 'G1_'),
         RankingFeatureGenerator(feature_group = "JACCARD_FG", feature ="JACCARD_FG_max_cell_jaccard" , prefix = 'G1_')
     ]
     grouper = InstancesGrouper(['earmark_id'])
@@ -138,11 +138,12 @@ def get_features(instances, num_processes):
     return pipe.instances
 
 
-def process_earmark_in_document(earmark_id, entity_ids, update, model_path):
-    earmark_ids = [earmark_id]
-    earmark_entity_tuples = get_earmark_entity_tuples(earmark_ids, entity_ids)[:10]
+def process_earmark_in_document(earmark_attribute, entity_attributes , update, model, feature_space):
 
-    instances = get_matching_instances(entity_ids, earmark_ids , earmark_entity_tuples, 1)
+    logging.info("\nProcessing Earmark %d" % earmark_attribute.earmark.earmark_id)
+
+    instances = [get_matching_instance(entity_attribute, earmark_attribute) for entity_attribute in entity_attributes]
+
     logging.info("Got %d Instances" % len(instances))
 
     if len(instances) == 0:
@@ -154,21 +155,18 @@ def process_earmark_in_document(earmark_id, entity_ids, update, model_path):
     logging.info("Got Features")
 
     #deserialize model and predict
-    feature_space = pickle.load(open(model_path+".feature_space", "rb"))
     X, y, space = pipe.instances_to_scipy_sparse(instances, feature_space = feature_space)
-
-    model = joblib.load(model_path)
-    logging.info("Loaded Model")
 
 
     y_pred = model.predict(X.todense())
     logging.info("Got Predictions")
-    logging.info("Matched %d instances " % sum(y_pred))
 
     #record predictionsin db
     if update:
         record_matching(instances, y_pred)
         logging.info("Updated DB")
+
+
 
 
 def process_document(args_tuple):
@@ -179,14 +177,23 @@ def process_document(args_tuple):
 
     logging.info("Processing Document %d" %doc_id )
 
-    earmark_ids = get_earmark_ids_in_doc(doc_id)
-    logging.info("Got %d earmarks" % len(earmark_ids))
 
     entity_ids = get_entity_ids_in_doc_from_db(doc_id)
+
+    entity_attributes =  get_entity_attributes_dict(entity_ids, 1).values()
     logging.info("Got %d entities" % len(entity_ids))
 
-    for earmark_id in earmark_ids:
-        process_earmark_in_document(earmark_id, entity_ids, update, model_path)
+    earmark_ids = get_earmark_ids_in_doc(doc_id)
+    earmark_attributes = get_earmark_attributes_dict(earmark_ids,1).values()
+    logging.info("Got %d earmarks" % len(earmark_ids))
+
+    feature_space = pickle.load(open(model_path+".feature_space", "rb"))
+    model = joblib.load(model_path)
+    logging.info("Loaded Model")
+
+
+    for earmark_attribute in earmark_attributes:
+        process_earmark_in_document(earmark_attribute, entity_attributes , update, model, feature_space )
 
     
 
@@ -209,12 +216,11 @@ def main():
 
     doc_ids = get_doc_ids_from_db(args.year)
 
-    for doc_id in doc_ids:
-        process_document((doc_id, args.update, args.model))
-        exit()
+    #for doc_id in doc_ids:
+    #    process_document((doc_id, args.update, args.model))
 
-    #p = mp.Pool(args.threads)
-    #results = p.map(process_document, [(doc_id, args.update) for doc_id in doc_ids])
+    p = mp.Pool(args.threads)
+    p.map(process_document, [(doc_id, args.update, args.model) for doc_id in doc_ids])
 
    
     

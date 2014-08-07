@@ -39,7 +39,7 @@ def write_entity_text_to_file(entities, path):
     
     	
 def get_negative_examples(year, count, outfile):
-    entity_ids = [entity["mid"] for entity in  get_candiadte_negative_examples_from_db(year, count)]
+    entity_ids = [entity["mid"] for entity in  get_candidate_negative_examples_from_db(year, count)]
     write_entity_ids_to_file(entity_ids, outfile)
     
 
@@ -56,14 +56,14 @@ def get_earmark_entities(year):
     """
     conn = psycopg2.connect(CONN_STRING)
     cmd = """select max (earmark_document_matched_entities.matched_entity_id) as matched_entity_id
-    from entities, earmark_documents, earmarks, earmark_document_matched_entities 
+    from entities, earmark_documents, earmarks, documents, earmark_document_matched_entities 
     where 
     earmark_document_matched_entities.matched_entity_id = entities.id 
+    and documents.id = earmark_documents.document_id
     and earmarks.earmark_id = earmark_documents.earmark_id 
-    and enacted_year = %s 
     and earmark_document_matched_entities.earmark_document_id = earmark_documents.id
+    and extract(year from date) = %s
     group by entity_inferred_name"""
-
 
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
     cur.execute(cmd, (year,))
@@ -71,7 +71,7 @@ def get_earmark_entities(year):
     conn.close()
     return records
 
-def get_candiadte_negative_examples_from_db( year, count ):
+def get_candidate_negative_examples_from_db( year, count ):
     """
     generates negative examples, randomly, for a given year
     """
@@ -83,10 +83,9 @@ def get_candiadte_negative_examples_from_db( year, count ):
         (select e.entity_inferred_name, max(e.id) as mid
         from entities as e , documents
         where e.document_id = documents.id 
-        and e.source = 'table'
-        and EXTRACT(YEAR FROM documents.date) = %s -1
+        and e.entity_type = 'table_row'
+        and EXTRACT(YEAR FROM documents.date) = %s 
         and not exists (select matched_entity_id from earmark_document_matched_entities where e.id = matched_entity_id)
-        
         group by e.entity_inferred_name
         ) as vu 
         order by r limit %s
