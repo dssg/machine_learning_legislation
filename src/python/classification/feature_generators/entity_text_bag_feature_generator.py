@@ -12,14 +12,8 @@ import scipy
 import string
 import re
 from classification.feature import Feature
+from matching.string_functions import normalize
 
-
-def normalize(s):
-    for p in string.punctuation:
-        s = s.replace(p, ' ')
-
-    s = re.sub(r'[ ]{2,}', " ", s)
-    return s.lower()
 
 
 class unigram_feature_generator:

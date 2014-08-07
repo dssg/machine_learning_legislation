@@ -15,7 +15,7 @@ from sklearn import cross_validation
 from sklearn.cross_validation import StratifiedKFold
 import scipy
 from dao.Entity import Entity
-from feature_generators import wikipedia_categories_feature_generator, entity_text_bag_feature_generator, simple_entity_text_feature_generator, gen_geo_features,calais_feature_generator
+from feature_generators import wikipedia_categories_feature_generator, entity_text_bag_feature_generator, simple_entity_text_feature_generator, gen_geo_features,calais_feature_generator, prefix_feature_generator
 from instance import Instance
 from pipe import Pipe
 import cPickle as pickle
@@ -23,7 +23,7 @@ import multiprocessing as mp
 from multiprocessing import Manager
 
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s')
 
 CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
 
@@ -154,6 +154,7 @@ def main():
         #simple_entity_text_feature_generator.simple_entity_text_feature_generator(force=True),
         #gen_geo_features.geo_feature_generator(force = True),
         calais_feature_generator.CalaisFeatureGenerator(force=True)
+        prefix_feature_generator.PrefixFeatureGenerator(force=True)
         ]
 
 

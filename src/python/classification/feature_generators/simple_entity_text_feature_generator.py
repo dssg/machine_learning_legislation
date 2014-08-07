@@ -12,13 +12,9 @@ import scipy
 import string
 import re
 from classification.feature import Feature
+from matching.string_functions import normalize
 
 
-def normalize(s):
-    for p in string.punctuation:
-        s = s.replace(p, ' ')
-    s = re.sub(r'[ ]{2,}', " ", s)
-    return s.lower()
 
 #number of all caps
 
@@ -52,6 +48,7 @@ def starts_with_for(s):
 
     first_token = tokens[0]
     return first_token == 'for'
+
 
 
 def percent_capitalized(s):

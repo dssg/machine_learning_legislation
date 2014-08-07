@@ -14,16 +14,9 @@ import re
 from classification.feature import Feature
 import csv
 from os.path import expanduser
+from matching.string_functions import normalize
 
 
-
-
-def normalize(s):
-    for p in string.punctuation:
-        s = s.replace(p, ' ')
-
-    s = re.sub(r'[ ]{2,}', " ", s)
-    return s
 
 def get_states_from_csv():
     full = set()
@@ -45,10 +38,6 @@ def get_cities_from_csv():
         cities_upper.add(row[1].upper())
         cities.add(row[1])
     return (cities, cities_upper)
-
-
-
-
 
 
 
