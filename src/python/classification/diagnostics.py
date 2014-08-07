@@ -40,17 +40,17 @@ def error_analysis_for_labeling(instances, X, y, folds, data_folder, clf = svm.L
 	for i, (train, test) in enumerate(cv):
 		model = clf.fit(X[train], y[train])
 		y_pred = model.predict(X[test])
-		#scores =  model.decision_function(X[test])
-		scores = model.predict_proba(X[test])[:,1]
-		precision, recall, thresholds = precision_recall_curve(y[test], scores)
-		print thresholds.shape[0]
-		for i in range(thresholds.shape[0]):
-		    print "Threshold: %f, Precision: %f, Recall: %f" %(thresholds[i], precision[i], recall[i])
+		scores =  model.decision_function(X[test])
+		#scores = model.predict_proba(X[test])[:,1]
+		#precision, recall, thresholds = precision_recall_curve(y[test], scores)
+		#print thresholds.shape[0]
+		#for i in range(thresholds.shape[0]):
+		#    print "Threshold: %f, Precision: %f, Recall: %f" %(thresholds[i], precision[i], recall[i])
 
-		#print("\nROC score on Test Data")
-		#print roc_auc_score( y[test], scores)
-		#do_error_analysis (y[test], y_pred, scores, test, instances)
-		relabel(y[test], y_pred, scores, test, instances, data_folder)
+		print("\nROC score on Test Data")
+		print roc_auc_score( y[test], scores)
+		do_error_analysis (y[test], y_pred, scores, test, instances)
+		#relabel(y[test], y_pred, scores, test, instances, data_folder)
 		print "\n"*5
 
 
@@ -284,9 +284,7 @@ def main():
 				pipe = Pipe( instances=instances)
 				logging.info("Start loading X, Y")
 				X, y, feature_space = pipe.instances_to_scipy_sparse()
-				clf = RandomForestClassifier(n_estimators=100,max_depth=None,
-                                             min_samples_split = 1, random_state = 0,max_features = 'log2',oob_score = True)
-				error_analysis_for_labeling(instances, X.todense(), y, args.folds, args.train, clf)
+				error_analysis_for_labeling(instances, X, y, args.folds, args.train)
 
 		if args.action =="grid":
 

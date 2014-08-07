@@ -14,9 +14,10 @@ import re
 from classification.feature import Feature
 import csv
 from os.path import expanduser
+import time
 
 
-def extract_entities(text):
+def extract_entities(text, retries=5):
     """
     Input: entity_text
     Output: calais entity
@@ -28,15 +29,18 @@ def extract_entities(text):
     calaises = [Calais(key, submitter="python-calais-demo") for key in API_KEYS]
     entities = []
     calais = calaises[ random.randint(0, len(calaises)-1 ) ]
-    try:
-        result = calais.analyze(text)
-        if hasattr(result, 'entities'):
-            for calais_entity in result.entities:
-                e_type = calais_entity['_type']
-                entities.append(e_type)
-    except:
-        logging.exception("failed while calling calais")
-
+    for i in range(retries):
+        try:
+            result = calais.analyze(text)
+            if hasattr(result, 'entities'):
+                for calais_entity in result.entities:
+                    e_type = calais_entity['_type']
+                    entities.append(e_type)
+                return entities
+        except:
+            logging.exception("failed while calling calais")
+            time.sleep(1)
+    logging.error("failed with all tries to call calais")
     return entities
 
 def calais_feature_dict(extracted_entities):
