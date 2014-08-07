@@ -25,7 +25,8 @@ def extract_entities(text, retries=5):
     import time
     sys.path.insert(0,os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile(inspect.currentframe() ))[0],"../../ner"))))
     from calais import Calais
-    API_KEYS = ["wdbkpbpsksskkbm2rpqfm4xa", "mt5qu3e4jdrd6jpc9r9ecama","k9fb7rfh7hpbfp238whuggrr","55rared7un2pnjr23kjtctes"]
+    random.seed(text)
+    API_KEYS = ["wdbkpbpsksskkbm2rpqfm4xa", "mt5qu3e4jdrd6jpc9r9ecama","k9fb7rfh7hpbfp238whuggrr","55rared7un2pnjr23kjtctes", "ccw5tvhv5sewvnnnpkfa9ydn", "ne7yxpax4ebug4qz3p4jguej", "nsuasahckne72keu8qu6zjd3", "bvuy6mqmr7z7x8jw5f4zzpkr"]
     calaises = [Calais(key, submitter="python-calais-demo") for key in API_KEYS]
     entities = []
     calais = calaises[ random.randint(0, len(calaises)-1 ) ]
