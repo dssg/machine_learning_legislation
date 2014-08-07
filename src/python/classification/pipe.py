@@ -93,7 +93,10 @@ def instances_to_scipy_sparse(instances, ignore_groups=[], feature_space=None):
             if f_group in ignore_groups:
                 continue
             for f_name, f in features.iteritems():
-                X[i, feature_space[f.name]] =  f.value
+                if not f.name in feature_space:
+                    logging.warning("%s is not in the feature space, ignoring!"%(f.name))
+                else:
+                    X[i, feature_space[f.name]] =  f.value
         Y.append(instances[i].target_class)
     logging.info("%d Instances loaded with %d features" %(X.shape[0], X.shape[1]))
     return scipy.sparse.csr_matrix(X), np.array(Y), feature_space            
