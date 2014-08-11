@@ -21,6 +21,7 @@ def find_labeled(filename):
     return tables
 
 labeled_folder = "/mnt/data/sunlight/tables/labeled"
+out_folder = "/mnt/data/sunlight/tables/evaluate"
 
 for doc in os.listdir(labeled_folder):
     # get table parser tables
@@ -35,3 +36,9 @@ for doc in os.listdir(labeled_folder):
     print "Number of hand labeled tables: %s" % len(labeled_tables)
     print "Number of table parser tables: %s" % len(table_parser_tables)
     print "\n\n\n\n\n"
+
+    # output results for manual inspection
+    labeled_file = open(os.path.join(out_folder, doc + "-labeled"), "w")
+    parsed_file = open(os.path.join(out_folder, doc + "-parsed"), "w")
+    labeled_file.write("TABLE:\n".join(labeled_tables))
+    parsed_file.write("TABLE:\n".join("".join(table.content) for table in table_parser_tables))
