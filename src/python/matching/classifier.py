@@ -30,11 +30,8 @@ def classify_randomforest_cv(X,y,estimators=100,test_data=0.4,features_func='log
     for i, (train, test) in enumerate(cv):
         model = clf.fit(X[train], y[train])
         y_pred = model.predict(X[test])
-        #target_names = ['no match', 'match']target_names=target_names
         print(classification_report(y[test], y_pred))
 
-        #cv_report = precision_recall_fscore_support(y[test],y_pred,average='micro')
-        #print(classification_report(y[test], y_pred))
         cv_report = precision_recall_fscore_support(y[test],y_pred)
         cv_precision.append(cv_report[0])
         cv_recall.append(cv_report[1])
@@ -85,8 +82,6 @@ def classify_randomforest_cv(X,y,estimators=100,test_data=0.4,features_func='log
     
         print 'LOO Score:', scores
         print("Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
-
-
 
 
 

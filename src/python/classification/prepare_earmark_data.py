@@ -15,6 +15,8 @@ from sklearn import cross_validation
 from sklearn.cross_validation import StratifiedKFold
 import scipy
 from dao.Entity import Entity
+from dao.Student import Student
+
 from feature_generators import wikipedia_categories_feature_generator, entity_text_bag_feature_generator, simple_entity_text_feature_generator, gen_geo_features,calais_feature_generator, prefix_feature_generator
 from instance import Instance
 from pipe import Pipe
@@ -153,8 +155,8 @@ def main():
         #entity_text_bag_feature_generator.bigram_feature_generator(force=True),
         #simple_entity_text_feature_generator.simple_entity_text_feature_generator(force=True),
         #gen_geo_features.geo_feature_generator(force = True),
-        calais_feature_generator.CalaisFeatureGenerator(force=True)
-        prefix_feature_generator.PrefixFeatureGenerator(force=True)
+        calais_feature_generator.CalaisFeatureGenerator(force=True),
+        prefix_feature_generator.PrefixFeatureGenerator(force=True, prefixes = ['O&M', 'for'])
         ]
 
 

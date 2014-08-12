@@ -13,34 +13,34 @@ class RankingFeatureGenerator:
     def __init__(self, **kwargs):
         self.force = kwargs.get("force", True)
 
-        self.feature = kwargs['feature']
-        self.feature_group = kwargs['feature_group']
+        self.pairs = kwargs['pairs']
         self.reverse = kwargs.get("reverse", True)
-        self.name = kwargs['prefix'] + "RANKNG_FEAUTURE_"+self.feature.upper()
-        self.feature_prefix = self.name
+        self.name = "RANKING_FEAUTURE_GENERATOR"
 
 
-
-            
-    
 
     def operate(self, instances):
         """
         given an instance a list of categories as features
         """
 
-        instances = sorted(instances, reverse = self.reverse, key = lambda x : x.feature_groups[self.feature_group][self.feature].value)
 
-        for i in range(len(instances)):
-            instance = instances[i]
 
-            if not self.force and instance.feature_groups.has_key(self.name):
-                return
+        for pair in self.pairs:
+            feature_group = pair[0]
+            feature = pair[1]
+            feature_name = self.name + feature_group + feature
 
-            instance.feature_groups[self.name] =  {}
 
-            
-            instance.feature_groups[self.name][self.feature_prefix] = Feature(self.feature_prefix, i) 
+            instances = sorted(instances, reverse = self.reverse, key = lambda x : x.feature_groups[feature_group][feature].value)
 
-            #logging.debug( "Feature count %d for entity after %s" %(instance.feature_count(), self.name))
+            for i in range(len(instances)):
+                instance = instances[i]
+
+                # make sure feature dict exists
+                instance.feature_groups[self.name] =  instance.feature_groups.get(self.name, {})
+
+                instance.feature_groups[self.name][feature_name] = Feature(feature_name, i) 
+
+        #logging.debug( "Feature count %d for entity after %s" %(instance.feature_count(), self.name))
 

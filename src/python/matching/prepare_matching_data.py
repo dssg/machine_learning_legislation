@@ -21,6 +21,7 @@ from matching.feature_generators.jaccard_feature_generator import JaccardFeature
 from matching.feature_generators.ranking_feature_generator import RankingFeatureGenerator
 from matching.feature_generators.difference_feature_generator import DifferenceFeatureGenerator
 from matching.feature_generators.infix_feature_generator import InfixFeatureGenerator
+from matching.feature_generators.table_feature_generator import TableFeatureGenerator
 
 from matching.matching_util import *
 
@@ -79,7 +80,7 @@ def main():
         logging.info("Got %d earmarks" % len(earmark_ids))
 
         entity_ids = list(get_entities_from_db())
-        logging.info("Got %d enitites" % len(entity_ids))
+        logging.info("Got %d entities" % len(entity_ids))
 
 
         instances = get_matching_instances(entity_ids, earmark_ids, get_earmark_entity_tuples(), args.threads)
@@ -89,7 +90,8 @@ def main():
         logging.info("Creating pipe")
         fgs = [
             JaccardFeatureGenerator(),
-            InfixFeatureGenerator()
+            InfixFeatureGenerator(), 
+            TableFeatureGenerator(),
         ]
         pipe = Pipe(fgs, instances, num_processes=args.threads)
         logging.info("Pushing into pipe")
@@ -98,9 +100,10 @@ def main():
 
 
         # group by earmark and document:
+        pairs = [("JACCARD_FG","JACCARD_FG_max_inferred_name_jaccard" ), ("JACCARD_FG", "JACCARD_FG_max_cell_jaccard")]
         fgs = [
-            RankingFeatureGenerator(feature_group = "JACCARD_FG", feature ="JACCARD_FG_max_inferred_name_jaccard" , prefix = 'G1_'),
-            RankingFeatureGenerator(feature_group = "JACCARD_FG", feature ="JACCARD_FG_max_cell_jaccard" , prefix = 'G1_')
+            RankingFeatureGenerator(pairs = pairs),
+            DifferenceFeatureGenerator(pairs = pairs)
         ]
         grouper = InstancesGrouper(['earmark_id', 'document_id'])
         pipe = BlocksPipe(grouper, fgs, pipe.instances, num_processes=args.threads )

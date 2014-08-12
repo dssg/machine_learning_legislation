@@ -37,7 +37,7 @@ def extract_entities(text, retries=5):
                 for calais_entity in result.entities:
                     e_type = calais_entity['_type']
                     entities.append(e_type)
-                return entities
+            return entities
         except:
             logging.exception("failed while calling calais")
             time.sleep(1)

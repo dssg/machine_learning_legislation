@@ -73,12 +73,14 @@ class Pipe:
     def set_instances(self, instances):
         self.instances = instances
 
-    def instances_to_scipy_sparse(self, ignore_groups=[]):
+
+
+    def instances_to_matrix(self, ignore_groups=[], dense = False):
         return instances_to_scipy_sparse(self.instances, ignore_groups=ignore_groups)
     
             
             
-def instances_to_scipy_sparse(instances, ignore_groups=[], feature_space=None):
+def instances_to_matrix(instances, ignore_groups=[], feature_space=None, dense = False):
     """
     ingore_groups: list containing generator names to ignore their features
     """
@@ -99,7 +101,13 @@ def instances_to_scipy_sparse(instances, ignore_groups=[], feature_space=None):
                     X[i, feature_space[f.name]] =  f.value
         Y.append(instances[i].target_class)
     logging.info("%d Instances loaded with %d features" %(X.shape[0], X.shape[1]))
-    return scipy.sparse.csr_matrix(X), np.array(Y), feature_space            
+
+    if not dense:
+        return scipy.sparse.csr_matrix(X), np.array(Y), feature_space 
+    else:
+        return X.todense(), np.array(Y), feature_space 
+
+
     
 def build_feature_space(instances, ignore_groups=[]):
     feature_space = {}
