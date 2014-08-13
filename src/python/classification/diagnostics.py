@@ -411,7 +411,7 @@ def main():
                     y_test = None
                     
 
-                do_grid_search(X_train, y_train, args.folds, clf, param_grid, parser_grid.scoring, X_test, y_test)
+                do_grid_search(X_train, y_train, args.folds, clf, param_grid, args.scoring, X_test, y_test)
                 
 
         elif args.subparser_name == "features":
