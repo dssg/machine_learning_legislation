@@ -36,6 +36,9 @@ def serialize_student_group(students, data_folder):
         for j in range(i+1, len(students), 1):
             instances.append(get_instance(students[i], students[j]))
     logging.info("Created %d instances" %(len(instances)))
+    if len(instances) == 0:
+        logging.warn("FAILED TO GENERATE INSTANCES!")
+        return
     fgs = [IsSameFeatureGenerator(fields=['ZipCode', 'Gender', 'Language', 'HomeLanguage'
     ,'BirthCountry', 'Race', 'Food', 'ESL', 'LEP', 'SpecialED','CatchmentSchool',
     'ThisGradeSchoolKey']),
@@ -46,6 +49,7 @@ def serialize_student_group(students, data_folder):
     pipe = pipe = Pipe(fgs, instances, num_processes=1)
     pipe.push_all_parallel()
     serialize_instances(pipe.instances, data_folder)
+    """
     print pipe.instances[0].attributes['student1']
     print pipe.instances[0].attributes['student2']
     for grp, features in pipe.instances[0].feature_groups.iteritems():
@@ -53,6 +57,7 @@ def serialize_student_group(students, data_folder):
         for name, feature in features.iteritems():
             print feature
     print "Positive: ", len([i for i in pipe.instances if i.target_class]), len(pipe.instances)
+    """
 
 def serialize_students(students, data_folder):
     student_groups = {}
@@ -73,7 +78,7 @@ def folder_to_scipy(folder_path, feature_space = None):
 
 def read_instances(root_dir):
     total_feature_space = set()
-    folders_list = [os.path.join(root_dir, fname) for fname in os.listdir(root_dir)[:200]]
+    folders_list = [os.path.join(root_dir, fname) for fname in os.listdir(root_dir)]
     for folder in folders_list:
         x, y, new_fs = folder_to_scipy(folder)
         for k in new_fs:
@@ -82,15 +87,25 @@ def read_instances(root_dir):
     total_feature_space = list(total_feature_space)
     for i in range(len(total_feature_space)):
         feature_space[total_feature_space[i]] = i
+    
+    all_x_y_spc = [folder_to_scipy(folder, feature_space) for folder in folders_list]
+    X = numpy.concatenate( [x for x,y,z in all_x_y_spc])
+    Y = numpy.concatenate( [y for x,y,z in all_x_y_spc])
+    
+    """
     X, Y, new_fs = folder_to_scipy(folders_list[0], feature_space)
+    i = 1
     for folder in folders_list[1:]:
         x, y, new_fs = folder_to_scipy(folder, feature_space)
         X = numpy.concatenate( (X , x))
         Y = numpy.concatenate((Y , y))
-    clf = svm.LinearSVC(C = 0.01)
-    param_grid = {'C': [  0.1, 0.5, 1, 4, 10, 100, 200, 500]}
-    #clf = RandomForestClassifier(n_estimators=10,max_depth=None, random_state = 0,max_features = 'log2', n_jobs = -1)
-    #param_grid = {'n_estimators' : [100], 'max_features' : ['log2'] }
+        i +=1
+        logging.info("Loaded %d out of %d" %(i, len(folders_list)))
+    """
+    #clf = svm.LinearSVC(C = 0.01)
+    #param_grid = {'C': [  0.1, 0.5, 1, 4, 10, 100, 200, 500]}
+    clf = RandomForestClassifier(n_estimators=10,max_depth=None, random_state = 0,max_features = 'log2', n_jobs = 5)
+    param_grid = {'n_estimators' : [10,100,500], 'max_features' : ['log2'] }
     folds = 5
     do_grid_search(X, Y, folds, clf, param_grid, "roc_auc", X_test = None, y_test = None)
     
