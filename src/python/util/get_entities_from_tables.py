@@ -59,14 +59,9 @@ def get_entities(path, conn):
 
                     for idx in column_indices:
                         cell = row.cells[idx]
-                        #offset = table_offset+row_offset+cell.offset
-                        #print cell.raw_text, f_str[offset:(offset+cell.length)]
                         if len(cell.clean_text) == 0:
                             continue
                         clean_row_text += cell.clean_text + " | "
-
-                        #csv_row = [cell.raw_text, "table_entity", str(offset), str(cell.length), cell.clean_text, "table", str(docid)]
-                        #csv_rows.append(csv_row)
 
                     csv_row = [clean_row_text[:2048], "table_row", table_offset+row_offset, row.length, clean_row_text[:2048], table.type + "_table", docid]
 
