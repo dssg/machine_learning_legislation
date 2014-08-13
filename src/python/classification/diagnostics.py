@@ -33,7 +33,7 @@ from time import time
 from sklearn.feature_selection import SelectPercentile, chi2
 from sklearn.ensemble import RandomForestClassifier
 
-from util.matching import bcolors
+from matching.matching import bcolors
 from util.prompt import query_yes_no
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
