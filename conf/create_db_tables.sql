@@ -15,6 +15,17 @@ number varchar(100),
 senate boolean
 );
 
+create table candidate_earmarks
+(
+id serial primary key,
+row varchar(2048),
+row_offset integer,
+row_length integer,
+document_id integer,
+score float
+);
+
+
 create table entities
 (
 id serial primary key,

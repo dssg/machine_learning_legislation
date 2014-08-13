@@ -15,7 +15,6 @@ from dao.Entity import Entity
 from instance import Instance
 import error_analysis
 import pipe 
-import pickle
 import marshal
 from sklearn import svm, grid_search
 import prepare_earmark_data
@@ -26,6 +25,8 @@ from pprint import pprint
 from sklearn.metrics import roc_curve, auc, precision_recall_curve, f1_score, accuracy_score, accuracy_score, precision_score, recall_score, roc_auc_score, precision_recall_fscore_support
 import matplotlib.pyplot as plt
 
+from sklearn.externals import joblib
+import cPickle as pickle
 
 import copy
 from time import time
@@ -141,6 +142,11 @@ def do_grid_search(X, y, folds, clf, param_grid, scoring, X_test = None, y_test 
 
 
 
+
+def save_model(X, y, feature_space, folds, clf, param_grid, scoring, outfile):
+    model = get_optimal_model (X, y, folds, clf, param_grid, scoring)
+    joblib.dump(model, outfile, compress=9)
+    pickle.dump(feature_space, open(outfile+'.feature_space','wb'))
 
 
 
@@ -369,6 +375,10 @@ def main():
         parser_grid = subparsers.add_parser('grid', help='tune hyper-parameters')
         parser_grid.add_argument('--scoring', required = True)
 
+        parser_save = subparsers.add_parser('save', help='tune hyper-parameters')
+        parser_save.add_argument('--scoring', required = True)
+        parser_save.add_argument('--outfile', required = True)
+
         parser_error = subparsers.add_parser('error', help='do error analysis')
         parser_features = subparsers.add_parser('features', help='do feature analysis')
         parser_error = subparsers.add_parser('relabel', help='do error analysis')
@@ -387,49 +397,54 @@ def main():
             param_grid = {'n_estimators' : [10, 30, 50, 100, 300, 500], 'max_features' : ['log2', 'sqrt'] }
             dense = True
 
+        if args.subparser_name == "save":
 
-        if args.subparser_name =="error":
+            instances = prepare_earmark_data.load_instances(args.train)
+            X, y, feature_space = pipe.instances_to_matrix(instances, dense = dense)
+            save_model(X, y, feature_space, args.folds, clf, param_grid, args.scoring, args.outfile)
 
-                #this does error analysis on training data only!
-                instances = prepare_earmark_data.load_instances(args.train)
-                X, y, feature_space = pipe.instances_to_matrix(instances, dense = dense)
-                error_analysis_for_labeling(instances, X, y, args.folds, clf, param_grid, args.train)
+        elif args.subparser_name =="error":
+
+            #this does error analysis on training data only!
+            instances = prepare_earmark_data.load_instances(args.train)
+            X, y, feature_space = pipe.instances_to_matrix(instances, dense = dense)
+            error_analysis_for_labeling(instances, X, y, args.folds, clf, param_grid, args.train)
 
         elif args.subparser_name =="grid":
 
-                if args.test:
-                    train_instances = prepare_earmark_data.load_instances(args.train)
-                    test_instances = prepare_earmark_data.load_instances(args.test)
-                    X_train, y_train, feature_space = pipe.instances_to_matrix(train_instances, dense = dense)
-                    X_test, y_test = test_instances_to_matrix(feature_space, test_instances, dense = dense)
-                    
-
-                else:
-                    instances = prepare_earmark_data.load_instances(args.train)
-                    X_train, y_train, feature_space = pipe.instances_to_matrix(instances, dense = dense)
-                    X_test = None
-                    y_test = None
-                    
-
-                do_grid_search(X_train, y_train, args.folds, clf, param_grid, parser_grid.scoring, X_test, y_test)
+            if args.test:
+                train_instances = prepare_earmark_data.load_instances(args.train)
+                test_instances = prepare_earmark_data.load_instances(args.test)
+                X_train, y_train, feature_space = pipe.instances_to_matrix(train_instances, dense = dense)
+                X_test, y_test = test_instances_to_matrix(feature_space, test_instances, dense = dense)
                 
+
+            else:
+                instances = prepare_earmark_data.load_instances(args.train)
+                X_train, y_train, feature_space = pipe.instances_to_matrix(instances, dense = dense)
+                X_test = None
+                y_test = None
+                
+
+            do_grid_search(X_train, y_train, args.folds, clf, param_grid, args.scoring, X_test, y_test)
+            
 
         elif args.subparser_name == "features":
 
-                if args.test:
-                    train_instances = prepare_earmark_data.load_instances(args.train)
-                    test_instances = prepare_earmark_data.load_instances(args.test)
-                    
-                else:
-                    # this is just for exposition, would really want to cv over this
-                    instances = prepare_earmark_data.load_instances(args.train)
-                    X, y, feature_space = pipe.instances_to_matrix(instances, dense = dense)
-                    train, test =  split_data_stratified(X, y, test_size = 0.33)
-                    train_instances = [instances[i] for i in train]
-                    test_instances = [instances[i] for i in test]
-                    
-                #do_feature_selection(X, y)
-                do_feature_set_analysis(train_instances, test_instances, args.folds, clf, param_grid, dense)
+            if args.test:
+                train_instances = prepare_earmark_data.load_instances(args.train)
+                test_instances = prepare_earmark_data.load_instances(args.test)
+                
+            else:
+                # this is just for exposition, would really want to cv over this
+                instances = prepare_earmark_data.load_instances(args.train)
+                X, y, feature_space = pipe.instances_to_matrix(instances, dense = dense)
+                train, test =  split_data_stratified(X, y, test_size = 0.33)
+                train_instances = [instances[i] for i in train]
+                test_instances = [instances[i] for i in test]
+                
+            #do_feature_selection(X, y)
+            do_feature_set_analysis(train_instances, test_instances, args.folds, clf, param_grid, dense)
 
 
 if __name__=="__main__":
