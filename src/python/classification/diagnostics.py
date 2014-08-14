@@ -33,8 +33,9 @@ from time import time
 from sklearn.feature_selection import SelectPercentile, chi2
 from sklearn.ensemble import RandomForestClassifier
 
-from util.matching import bcolors
+from matching.matching import bcolors
 from util.prompt import query_yes_no
+import multiprocessing
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 
@@ -101,7 +102,9 @@ def do_grid_search(X, y, folds, clf, param_grid, scoring, X_test = None, y_test 
         roc = []
 
         for i, (train, test) in enumerate(cv):
-            model = get_optimal_model (X[train], y[train], folds, clf, param_grid, scoring)
+            #model = get_optimal_model (X[train], y[train], folds, clf, param_grid, scoring)
+            model = clf.fit(X[train], y[train])
+            logging.info("Finished Training fold %d" %(i))
             y_pred = model.predict(X[test])
             scores = get_scores(model, X[test])
 
@@ -111,6 +114,13 @@ def do_grid_search(X, y, folds, clf, param_grid, scoring, X_test = None, y_test 
             cv_fscore.append(cv_report[2])
             cv_support.append(cv_report[3])
             roc.append(roc_auc_score( y[test], scores))
+            
+            print "Fold Precision Class 0: %0.4f" %(cv_report[0][0])
+            print "Fold Precision Class 1: %0.4f" %(cv_report[0][1])
+            print "Fold Recall Class 0: %0.4f" %(cv_report[1][0])
+            print "Fold Recall Class 1: %0.4f" %(cv_report[1][1])
+            print "Fold F-Score Class 0: %0.4f" %(cv_report[2][0])
+            print "Fold F-Score Class 1: %0.4f" %(cv_report[2][1])
 
         
         
@@ -156,7 +166,7 @@ def get_optimal_model (X, y, folds, clf, param_grid, scoring):
         print "\n\n\nDoing Gridsearch\n"
 
         strat_cv = cross_validation.StratifiedKFold(y, n_folds = folds)
-        model = grid_search.GridSearchCV(cv  = strat_cv, estimator = clf, param_grid  = param_grid,  n_jobs=8, scoring = scoring)
+        model = grid_search.GridSearchCV(cv  = strat_cv, estimator = clf, param_grid  = param_grid,  n_jobs=multiprocessing.cpu_count(), scoring = scoring)
         model = model.fit(X, y)
         y_pred = model.predict(X)
         scores = get_scores(model, X)
@@ -417,6 +427,7 @@ def main():
             error_analysis_for_labeling(instances, X, y, args.folds, clf, param_grid, args.train)
 
         elif args.subparser_name =="grid":
+
 
             if args.test:
                 train_instances = prepare_earmark_data.load_instances(args.train)
