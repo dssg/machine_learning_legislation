@@ -14,6 +14,8 @@ from classification.diagnostics import do_grid_search
 from sklearn import svm
 from sklearn.ensemble import RandomForestClassifier
 from pprint import pprint
+from sklearn.externals import joblib
+import cPickle as pickl
 
 def get_students(file_path):
     students = []
@@ -77,6 +79,8 @@ def folder_to_scipy(folder_path, feature_space = None):
     return x, y, feature_space
 
 def read_instances(root_dir):
+    #if os.path.exists(os.path.join(root_dir,'x.npy')) and os.path.exists(os.path.join(root_dir,'y.npy')):
+    #    return numpy.load(os.path.join(root_dir,'x.npy')), numpy.load( os.path.join(root_dir,'y.npy'))
     total_feature_space = set()
     folders_list = [os.path.join(root_dir, fname) for fname in os.listdir(root_dir)]
     for folder in folders_list:
@@ -91,6 +95,9 @@ def read_instances(root_dir):
     all_x_y_spc = [folder_to_scipy(folder, feature_space) for folder in folders_list]
     X = numpy.concatenate( [x for x,y,z in all_x_y_spc])
     Y = numpy.concatenate( [y for x,y,z in all_x_y_spc])
+    #numpy.save(os.path.join( root_dir,'x'),X)
+    #numpy.save(os.path.join('y'),Y)
+    return X, Y, feature_space
     
     """
     X, Y, new_fs = folder_to_scipy(folders_list[0], feature_space)
@@ -102,23 +109,86 @@ def read_instances(root_dir):
         i +=1
         logging.info("Loaded %d out of %d" %(i, len(folders_list)))
     """
+    
+
+def classify(root_dir):
+    X, Y, feature_space = read_instances(root_dir)
+    logging.info("Shape of X:")
+    print X.shape
     #clf = svm.LinearSVC(C = 0.01)
     #param_grid = {'C': [  0.1, 0.5, 1, 4, 10, 100, 200, 500]}
-    clf = RandomForestClassifier(n_estimators=10,max_depth=None, random_state = 0,max_features = 'log2', n_jobs = 5)
-    param_grid = {'n_estimators' : [10,100,500], 'max_features' : ['log2'] }
-    folds = 5
+    clf = RandomForestClassifier(n_estimators=500,max_depth=None, random_state = 0,max_features = 'log2', n_jobs = -1)
+    param_grid = {'n_estimators' : [500], 'max_features' : ['log2'] }
+    folds = 10
     do_grid_search(X, Y, folds, clf, param_grid, "roc_auc", X_test = None, y_test = None)
+    
+def build_model(root_dir, model_path):
+    X, Y, feature_space = read_instances(root_dir)
+    logging.info("Shape of X:")
+    print X.shape
+    clf = RandomForestClassifier(n_estimators=500,max_depth=None, random_state = 0,max_features = 'log2', n_jobs = -1)
+    model = clf.fit(X, Y)
+    joblib.dump(clf, model_path, compress=9)
+    pickle.dump(feature_space, open(model_path+".feature_space",'wb'))
+
+def group_students(students, group_by="ThisGradeSchoolKey"):
+    student_groups = {}
+    for student in students:
+        grp_value = getattr(student,group_by))
+        if not student_groups.has_key(grp_value):
+            student_groups[grp_value] = []
+        student_groups[grp_value].append(student)
+    return student_groups
+    
+def predict(test_students_file, train_students_file, model_path, outfile):
+    test_students = get_students(test_students_file)
+    train_students = get_students(train_students_file)
+    model = joblib.load(model_path)
+    feature_space = pickle.load(open(model_path+".feature_space",'rb'))
+    train_groups = group_students(train_students, group_by="ThisGradeSchoolKey")
+    test_groups = group_students(test_students, group_by="ThisGradeSchoolKey")
+    for key, students_list in test_groups.iteritems():
+        if not key in train_groups:
+            logging.warn("Key %s was not found in the train group! can't do prediction. Ignoring", %(str(key)))
+        else:
+            train_students_list = train_groups[key]
+            
+    
     
         
 def main():
     parser = argparse.ArgumentParser(description='learn distance function')
-    parser.add_argument('--infile', required=True, help='infile containing students')
-    parser.add_argument('--n', type = int, default = 100000, help='max number of students to train on')
-    parser.add_argument('--data', required=True, help='output data of serialization')
+    subparsers = parser.add_subparsers(dest='subparser_name',help='sub-command help')
+    
+    parser_serialize =  subparsers.add_parser('serialize')
+    parser_serialize.add_argument('--infile', required=True, help='infile containing students')
+    parser_serialize.add_argument('--n', type = int, default = 100000, help='max number of students to train on')
+    parser_serialize.add_argument('--data', required=True, help='output data of serialization')
+    
+    parser_cv =  subparsers.add_parser('cv')
+    parser_cv.add_argument('--data', required=True, help='data folder of serialization')
+    
+    parser_model =  subparsers.add_parser('build_model')
+    parser_model.add_argument('--data', required=True, help='data folder of serialized instances')
+    parser_model.add_argument('--outfile', required=True, help='file where model will be serialized')
+    
+    parser_predict = subparsers.add_parser('predict')
+    parser_predict.add_argument('--test', required=True, help='file containing students for test')
+    parser_predict.add_argument('--train', required=True, help='file containing students that model trained on')
+    parser_predict.add_argument('--model', required=True, help='file containing students that model trained on')
+    parser_predict.add_argument('--outfile', required=True, help='file where predictions will be written')
+    
     args = parser.parse_args()
     logging.info("pid: " + str(os.getpid()))
-    #serialize_students(get_students(args.infile)[:args.n], args.data)
-    read_instances(args.data)
+    if args.subparser_name == "serialize":
+        serialize_students(get_students(args.infile)[:args.n], args.data)
+    elif args.subparser_name == "cv":
+        classify(args.data)
+    elif args.subparser_name == "build_model":
+        build_model(args.data, args.outfile)
+    elif args.subparser_name == "predict":
+        pass
+    
     logging.info("Done!")
         
 
