@@ -2,7 +2,6 @@ import os, sys, inspect
 sys.path.insert(0, os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],".."))))
 import argparse
 import util.text_table_tools as text_table_tools
-import util.path_tools as path_tools
 import psycopg2
 import logging
 from sklearn.externals import joblib
@@ -11,104 +10,202 @@ from instance import Instance
 from pipe import Pipe
 import pipe
 from feature_generators import  entity_text_bag_feature_generator, simple_entity_text_feature_generator, gen_geo_features
+import prepare_earmark_data
+import diagnostics
+from sklearn import svm
+from util import path_tools
+from matching import string_functions
+import csv
+import re
 
 
 
-def get_doc_id(path):
-    if "congress" in path:
-        path_util = path_tools.ReportPathUtils(path  = path)
-    else:
-        path_util = path_tools.BillPathUtils(path  = path)
+class EarmarkDetector:
 
-    docid = path_util.get_db_document_id()
-    return docid
+    def __init__(self, geo_coder, sponsor_coder, conn, model, feature_space):
+        self.geo_coder = geo_coder
+        self.sponsor_coder = sponsor_coder
+        self.conn = conn
+        self.model = model
+        self.feature_space = feature_space
+        fgs = [
+            entity_text_bag_feature_generator.unigram_feature_generator(force=True),
+            simple_entity_text_feature_generator.simple_entity_text_feature_generator(force=True),
+            gen_geo_features.geo_feature_generator(force = True),
+        ]
+        self.pipe = Pipe(fgs, num_processes=1)
 
 
+    def get_instance_from_row(self, row, column_indices):
+        instance = Instance()
+        row_offset = row.offset
+        entity_inferred_name = ''
+        entity_text = ''
+
+        for i in range(len(row.cells)):
+            cell = row.cells[i]
+            entity_text += cell.clean_text + " | "
+            if i in column_indices:
+                entity_inferred_name += cell.clean_text + " | "
+
+        entity_text = entity_text[:-3]
+        entity_inferred_name = entity_inferred_name[:-3]
+
+        instance.attributes["entity_inferred_name"] = entity_inferred_name[:2048]
+        instance.attributes['entity_text'] = entity_text[:2048]
+        instance.attributes["id"] = 0
+        return self.pipe.push_single(instance)
 
 
-def label_all(directory, conn, model, feature_space):
+    def label_row(self, row, column_indices, table_offset, congress, chamber, document_type, number, sponsor_indices):
+
+        instance = self.get_instance_from_row(row, column_indices)
+        X, y, space = pipe.instances_to_matrix([instance,], feature_space = self.feature_space, dense = False)
+        scores = self.model.decision_function(X)
+        fields = ['congress', 'chamber','document_type','number', 'row', 'row_offset', 'row_length', 'score', 'state', 'sponsors'] 
+        cmd = "insert into candidate_earmarks (" + ", ".join(fields) + ") values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+        attributes = instance.attributes
+        state = self.geo_coder.get_state(attributes['entity_text'])
+        cur = self.conn.cursor()
+
+
+        sponsors = '%d ' % len(sponsor_indices)
+        for index in sponsor_indices:
+            sponsors += attributes['entity_text'].split("|")[index] + ' '
+        sponsors = sponsors[:-1]
+        sponsors = sponsors[:1024]
+
+
+        cur.execute(cmd, (congress, chamber, document_type, number, attributes['entity_text'], row.offset+table_offset, row.length, scores[0], state, sponsors))
+        self.conn.commit()
+
+
+    def label_doc(self, doc_path, congress, chamber, document_type, number):
+        paragraphs_list = text_table_tools.get_paragraphs(open(doc_path,'r'))
+        tables = text_table_tools.identify_tables(paragraphs_list)
+        for table in tables:
+            table_offset = table.offset
+            column_indices = sorted(text_table_tools.get_candidate_columns(table))
+            sponsor_indices = self.sponsor_coder.find_sponsor_index(table)
+            for row in table.rows:
+                self.label_row(row, column_indices, table_offset, congress, chamber, document_type, number, sponsor_indices)
+
+
     
-    # Walk the tree.
+
+class GeoCoder:
+    def __init__(self):
+
+        self.state_names_dict = {}
+        self.capitalized_state_names_dict = {}
+
+        for row in csv.reader(open("/mnt/data/sunlight/misc/states.csv")):
+            self.state_names_dict[row[0]] = row[1]
+            self.capitalized_state_names_dict[row[0].upper()] = row[1]
+
+        self.state_names = set(self.state_names_dict.keys())
+        self.capitalized_state_names = set(self.capitalized_state_names_dict.keys())
+        self.state_abbreviations = set(self.state_names_dict.values())
+        self.cities = set()
+        self.cities_upper = set()
+
+        for row in csv.reader(open("/home/ewulczyn/machine_learning_legislation/data/cities.csv")):
+            self.cities_upper.add(row[1].upper())
+            self.cities.add(row[1])
+
+
+    def get_state(self, row):
+        tokens = string_functions.tokenize(row)
+        for t in tokens:
+            if t in self.capitalized_state_names:
+                return self.capitalized_state_names_dict[t]
+            if t in self.state_names:
+                return self.state_names_dict[t]
+            if t in self.state_abbreviations:
+                return t
+        return None
+
+
+    def get_city(self, row):
+        for city in self.cities:
+            if city in row:
+                return city
+
+        for city in self.cities_upper:
+            if city in row:
+                return city
+        return None
+
+
+class SponsorCoder:
+
+    def __init__(self):
+        self.sponsors = set()
+
+        for row in csv.reader(open("/mnt/data/sunlight/misc/legislators.csv", 'rU')):
+            self.sponsors.add(row[0])
+
+
+    def find_sponsor_index(self, table):
+        if len(table.rows) ==0 :
+            return None
+        m = len(table.rows)
+        n = len(table.rows[0].cells)
+
+        columns = [ [table.rows[i].cells[j].clean_text for i in range(m) ] for j in range(n) ]
+        sponsor_densities = [(self.compute_sponsor_density(columns[j]), j ) for j in range(n)]
+
+        sponsor_densities = sorted(sponsor_densities, reverse = True, key = lambda x : x[0])
+        indices = [t[1] for t in sponsor_densities if t[0] > 0.1]
+
+        return indices[:2]
+
+
+    def compute_sponsor_density(self, column):
+        return sum([self.has_sponsor(cell) for cell in column]) / float(len(column))
+
+
+
+    def has_sponsor(self, cell):
+        tokens = re.split('[:;, ]', cell)
+        n = len(tokens)
+        num_sponsors = 0
+        for token in tokens:
+            if token in self.sponsors:
+                num_sponsors +=1
+        if num_sponsors/n > 0.7:
+            return 1
+        else:
+            return 0
+            
+
+
+
+
+def label_all(directory, earmark_detector):
     for root, directories, files in os.walk(directory):
         for filename in files:
             if filename == "document.txt" or "." not in filename:
-                # Join the two strings in order to form the full filepath.
-                filepath = os.path.join(root, filename)
-                label_doc(filepath, conn, model, feature_space)
+                doc_path = os.path.join(root, filename)
+                if "congress" in doc_path:
+                    path_util = path_tools.ReportPathUtils(path  = doc_path)
+                    document_type = 'report'
+                    number = path_util.report_number()
+                else:
+                    path_util = path_tools.BillPathUtils(path  = doc_path)
+                    document_type = 'bill'
+                    path_util.bill_number()
 
-
-
-def get_instance_from_row(doc_id, table_offset, column_indices, row):
-    instance = Instance()
-
-    row_offset = row.offset
-    entity_inferred_name = ''
-    entity_text = ''
-
-    for i in range(len(row.cells)):
-        cell = row.cells[i]
-        if len(cell.clean_text) == 0:
-            continue
-        entity_text += cell.clean_text + " | "
-        if i in column_indices:
-            entity_inferred_name += cell.clean_text + " | "
-
-    instance.attributes["entity_offset"] = table_offset+row.offset
-    instance.attributes["entity_length"] = row.length
-    instance.attributes["entity_inferred_name"] = entity_inferred_name[:2048]
-    instance.attributes['entity_text'] = entity_text[:2048]
-    instance.attributes["document_id"] = doc_id
-    instance.attributes["id"] = 0
-
-    return instance
-
-
-
-def get_features(instances, num_processes):
-    logging.info("Creating pipe")
-
-    fgs = [
-        entity_text_bag_feature_generator.unigram_feature_generator(force=True),
-        simple_entity_text_feature_generator.simple_entity_text_feature_generator(force=True),
-        gen_geo_features.geo_feature_generator(force = True),
-    ]
-    pipe = Pipe(fgs, instances, num_processes=num_processes)
-    pipe.push_all_parallel()
-    return pipe.instances
-
-
-
-def label_doc(path, conn, model, feature_space):
-    doc_id = get_doc_id(path)
-    instances = []
-    paragraphs_list = text_table_tools.get_paragraphs(open(path,'r'))
-    f_str = open(path,'r').read()
-    tables = text_table_tools.identify_tables(paragraphs_list)
-
-    for table in tables:
-        table_offset = table.offset
-        column_indices = sorted(text_table_tools.get_candidate_columns(table))
-        for row in table.rows:
-            instances.append(get_instance_from_row(doc_id, table_offset, column_indices, row))
-
-    instances = get_features(instances, 1)
-    X, y, space = pipe.instances_to_matrix(instances, feature_space = feature_space, dense = False)
-    scores = model.decision_function(X)
-    fields = ['row', 'row_offset', 'row_length', 'document_id', 'score'] 
-    cmd = "insert into candidate_earmarks (" + ", ".join(fields) + ") values (%s, %s, %s, %s, %s)"
-    for i in range(len(instances)):
-        attributes = instances[i].attributes
-        cur = conn.cursor()
-        cur.execute(cmd, (attributes['entity_text'],attributes['entity_offset'], attributes['entity_length'], doc_id, scores[i]))
-        conn.commit()
-
+                earmark_detector.label_doc(doc_path, path_util.congress(), path_util.chamber(), document_type, number)
 
 
 
 def main():
 
     parser = argparse.ArgumentParser(description='Match entities to OMB')
-    parser.add_argument('--model', required = True, help='path to pickeld matching model')
+    parser.add_argument('--model', required = False, help='path to pickeld matching model')
+    parser.add_argument('--data', required = False, help='path to pickeld instances')
+
     args = parser.parse_args()
 
     bills2008 = "/mnt/data/sunlight/bills/110/bills/hr/hr2764/text-versions/"
@@ -119,18 +216,32 @@ def main():
 
     folders = [os.path.join(reports_base, year) for year in years] + [bills2008, bills2009]
 
-
-
     CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
     conn = psycopg2.connect(CONN_STRING)
 
-    feature_space = pickle.load(open(args.model+".feature_space", "rb"))
-    model = joblib.load(args.model)
-    logging.info("Loaded Model")
+    if args.model:
+        feature_space = pickle.load(open(args.model+".feature_space", "rb"))
+        model = joblib.load(args.model)
+        logging.info("Loaded Model")
 
+    elif args.data:
+        keep_group = ['unigram_feature_generator', 'simple_entity_text_feature_generator', 'geo_feature_generator']
+        instances = prepare_earmark_data.load_instances(args.data)
+        ignore_groups = [ fg for fg in instances[0].feature_groups.keys() if fg not in keep_group]
+        X, y, feature_space = pipe.instances_to_matrix(instances, ignore_groups = ignore_groups,  dense = False)
+        clf = svm.LinearSVC(C = 0.01)
+        param_grid = {'C': [ 0.01, 0.1]}
+        model = diagnostics.get_optimal_model (X, y, 5, clf, param_grid, 'roc_auc')
+    else:
+        exit()
+
+    geo_coder = GeoCoder()
+    sponsor_coder = SponsorCoder()
+
+    earmark_detector = EarmarkDetector(geo_coder, sponsor_coder, conn, model, feature_space)
 
     for folder in folders:
-       label_all(folder, conn, model, feature_space);
+       label_all(folder, earmark_detector);
     conn.close()
 
 

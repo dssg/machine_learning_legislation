@@ -20,7 +20,7 @@ from nltk.tokenize.punkt import PunktWordTokenizer
 from nltk.tokenize import WhitespaceTokenizer
 import multiprocessing as mp
 
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
  
 
 class bcolors:

@@ -15,15 +15,27 @@ number varchar(100),
 senate boolean
 );
 
+create table sponsors
+(
+candidate_earmark_id integer,
+sponsor varchar(128)
+)
+
 create table candidate_earmarks
 (
 id serial primary key,
+congress integer,
+chamber varchar(10),
+document_type varchar(6),
+city varchar(128),
+state varchar(2),
+county varchar(128),
 row varchar(2048),
 row_offset integer,
 row_length integer,
-document_id integer,
 score float
-);
+)
+
 
 
 create table entities

@@ -25,7 +25,7 @@ import multiprocessing as mp
 from multiprocessing import Manager
 
 
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 
 CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
 
@@ -88,11 +88,11 @@ def load_instances(infolder):
     infolder: folder containing files that are pickled
     """
     instances = []
-    file_names = os.listdir(infolder)
-    for fname in file_names:
-        if fname.endswith('.pickle'):
-            logging.debug("Deserializing part %s" %(fname))
-            instances += pickle.load(open(os.path.join(infolder, fname), 'rb'))
+    for root, dirs, files in os.walk(infolder, followlinks=True):
+        for fname in files:
+            if fname.endswith('.pickle'):
+                logging.debug("Deserializing part %s" %(fname))
+                instances += pickle.load(open(os.path.join(root, fname), 'rb'))
     logging.info("%d instances deserialized"%(len(instances)))
     return instances
             

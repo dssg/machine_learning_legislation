@@ -26,7 +26,7 @@ from matching.feature_generators.table_feature_generator import TableFeatureGene
 from matching.matching_util import *
 
 
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 MIN = 0.1
 
 

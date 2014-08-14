@@ -11,7 +11,7 @@ from sklearn import cross_validation
 from sklearn.cross_validation import StratifiedKFold
 import scipy
 from dao.Entity import Entity
-
+from sklearn.metrics import classification_report
 from instance import Instance
 import error_analysis
 import pipe 
@@ -81,7 +81,7 @@ def get_scores(model, X):
 
 def do_grid_search(X, y, folds, clf, param_grid, scoring, X_test = None, y_test = None):
 
-    if X_test:
+    if X_test is not None:
         model = get_optimal_model (X, y, folds, clf, param_grid, scoring)
 
         y_pred = model.predict(X_test)
@@ -213,9 +213,9 @@ def do_feature_selection(X, y):
 
 
 
-def do_feature_set_analysis(train_instances, test_instances, folds, clf, param_grid, dense):
+def do_feature_set_analysis(train_instances, test_instances, folds, clf, param_grid, dense, outfile):
 
-    groups = set(train_instances[0].feature_groups.keys())
+    groups = set(train_instances[0].feature_groups.keys()).intersection(test_instances[0].feature_groups.keys())
     opt_groups = set()
     classifier = svm.LinearSVC(C = 0.01)
 
@@ -252,9 +252,9 @@ def do_feature_set_analysis(train_instances, test_instances, folds, clf, param_g
     plt.ylim([-0.05, 1.05])
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
-    plt.title('Receiver operating characteristic example')
-    plt.legend(loc="lower right")
-    plt.savefig('features.png')
+    plt.title('Feature Set Analysis')
+    plt.legend(loc="lower right", prop={'size':12})
+    plt.savefig(outfile)
 
 
 
@@ -381,11 +381,17 @@ def main():
 
         parser_error = subparsers.add_parser('error', help='do error analysis')
         parser_features = subparsers.add_parser('features', help='do feature analysis')
+        parser_features.add_argument('--outfile', required = True)
+
         parser_error = subparsers.add_parser('relabel', help='do error analysis')
 
 
 
         args = parser.parse_args() 
+
+        print "Doing %s" % args.subparser_name
+        print "Train: %s" %args.train
+        print "Test: %s" % args.test
 
         if args.alg == 'svm':
             clf = svm.LinearSVC(C = 0.01)
@@ -444,7 +450,7 @@ def main():
                 test_instances = [instances[i] for i in test]
                 
             #do_feature_selection(X, y)
-            do_feature_set_analysis(train_instances, test_instances, args.folds, clf, param_grid, dense)
+            do_feature_set_analysis(train_instances, test_instances, args.folds, clf, param_grid, dense, args.outfile)
 
 
 if __name__=="__main__":
