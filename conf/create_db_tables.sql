@@ -19,7 +19,7 @@ create table sponsors
 (
 candidate_earmark_id integer,
 sponsor varchar(128)
-)
+);
 
 create table candidate_earmarks
 (
@@ -34,7 +34,7 @@ row varchar(2048),
 row_offset integer,
 row_length integer,
 score float
-)
+);
 
 
 
@@ -82,8 +82,8 @@ document_id integer,
 page_number varchar(256),
 excerpt varchar(4096),
 inferred_offset integer,
-inferred_length integer, 
-matching_entity_id integer,
+inferred_length integer,
+matching_entity_id integer
 );
 
 create table organization_allocation
