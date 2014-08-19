@@ -1,4 +1,8 @@
-from path_tools import BillPathUtils, ReportPathUtils
+import sys
+import os
+import inspect
+sys.path.insert(0, os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],".."))))
+from util.path_tools import BillPathUtils, ReportPathUtils
 
 ids_file = open("bills_reports_ids.csv", "w")
 
