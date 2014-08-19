@@ -25,6 +25,14 @@ def normalize(s):
     s = re.sub(r'[ ]{2,}', " ", s)
     return s.lower().strip()
 
+
+def normalize_no_lower(s):
+    s = s.replace("|", "")
+    for p in string.punctuation:
+        s = s.replace(p, ' ')
+    s = re.sub(r'[ ]{2,}', " ", s)
+    return s.strip()
+
     
 
 def tokenize(s):

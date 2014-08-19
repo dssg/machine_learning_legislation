@@ -9,6 +9,7 @@ from collections import Counter
 import csv
 from itertools import chain
 import math
+import logging
 
 
 
@@ -267,7 +268,6 @@ def parse_header(header_content):
 def get_candidate_entities(table):
     counts = Counter(list(chain.from_iterable(table.rows)))
     entities = [key for key in counts.keys() if (counts[key]<3 and not re.match(r'\$*[\d,]{3,}', key))]
-    #pprint(entities)
     return entities
 
 def detect_table_type(table):
@@ -452,7 +452,7 @@ def fix_multiline(table, column_index):
     new_rows = []
     for candidates in merge_blocks:
         if len(candidates) == 0:
-            print "something is wrong, shouldn't be candiadtes of length 0"
+            logging.debug( "something is wrong, shouldn't be candiadtes of length 0")
         else:
             new_row = merge_rows(candidates)
             new_rows.append(new_row)
@@ -495,7 +495,7 @@ def parse_table_structure(table):
     boundaries = [('a',0),] # just for sanity check, we know it's char
     i = 1
     if len(indices) == 0:
-        print "No columns could be found, then everything is one cell"
+        logging.debug( "No columns could be found, then everything is one cell")
     else:
         begin_index = indices[0]
         prev_index = indices[0]

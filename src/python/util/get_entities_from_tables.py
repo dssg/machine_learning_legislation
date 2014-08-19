@@ -26,6 +26,20 @@ def insert_all(directory, conn):
 
 
 
+def get_row_entity_text_and_entity_inferred_name(row, column_indices):
+    entity_inferred_name = ''
+    entity_text = ''
+
+    for i in range(len(row.cells)):
+        cell = row.cells[i]
+        entity_text += cell.clean_text + " | "
+        if i in column_indices:
+            entity_inferred_name += cell.clean_text + " | "
+
+    entity_text = entity_text[:-3]
+    entity_inferred_name = entity_inferred_name[:-3]
+    return entity_text, entity_inferred_name
+
 
 def get_entities(path, conn):
         if "congress" in path:
@@ -50,21 +64,9 @@ def get_entities(path, conn):
                 csv_rows =[]
                 column_indices = sorted(text_table_tools.get_candidate_columns(table))
 
-
                 for row in table.rows:
-                    row_offset = row.offset
-                    clean_row_text = ''
-
-                    csv_row = []
-
-                    for idx in column_indices:
-                        cell = row.cells[idx]
-                        if len(cell.clean_text) == 0:
-                            continue
-                        clean_row_text += cell.clean_text + " | "
-
-                    csv_row = [clean_row_text[:2048], "table_row", table_offset+row_offset, row.length, clean_row_text[:2048], table.type + "_table", docid]
-
+                    (entity_text, entity_inferred_name) = get_row_entity_text_and_entity_inferred_name(row, column_indices)
+                    csv_row = [entity_text[:2048], "table_row", table_offset+row.offset, row.length, entity_inferred_name[:2048], table.type + "_table", docid]
                     csv_rows.append(csv_row)
 
                 cmd = "insert into entities (" + ", ".join(fields) + ") values (%s, %s, %s, %s, %s, %s, %s)"
@@ -76,23 +78,26 @@ def get_entities(path, conn):
                 print csv_row
                 logging.exception("SCREW UP")
 
+
+def main():
+    years = [ "111", "110","109", "108"] 
+
+    reports_base="/mnt/data/sunlight/congress_reports/"
+    bills2008 = "/mnt/data/sunlight/bills/110/bills/hr/hr2764/text-versions/"
+    bills2009 = "/mnt/data/sunlight/bills/111/bills/hr/hr1105/text-versions/"
+
+
+    CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
+    conn = psycopg2.connect(CONN_STRING)
+
+    insert_all(bills2008, conn);
+    insert_all(bills2009, conn);
+
+    for year in years:
+       insert_all(reports_base+year+"/", conn);
+    conn.close()
     
 
-years = [ "111", "110","109", "108"] 
+if __name__=="__main__":
 
-reports_base="/mnt/data/sunlight/congress_reports/"
-bills2008 = "/mnt/data/sunlight/bills/110/bills/hr/hr2764/text-versions/"
-bills2009 = "/mnt/data/sunlight/bills/111/bills/hr/hr1105/text-versions/"
-
-
-CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
-conn = psycopg2.connect(CONN_STRING)
-
-insert_all(bills2008, conn);
-insert_all(bills2009, conn);
-
-for year in years:
-   insert_all(reports_base+year+"/", conn);
-conn.close()
-
-
+    main()

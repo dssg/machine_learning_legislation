@@ -14,9 +14,11 @@ import prepare_earmark_data
 import diagnostics
 from sklearn import svm
 from util import path_tools
+from util.get_entities_from_tables import get_row_entity_text_and_entity_inferred_name
 from matching import string_functions
 import csv
 import re
+import util
 
 
 
@@ -39,18 +41,7 @@ class EarmarkDetector:
     def get_instance_from_row(self, row, column_indices):
         instance = Instance()
         row_offset = row.offset
-        entity_inferred_name = ''
-        entity_text = ''
-
-        for i in range(len(row.cells)):
-            cell = row.cells[i]
-            entity_text += cell.clean_text + " | "
-            if i in column_indices:
-                entity_inferred_name += cell.clean_text + " | "
-
-        entity_text = entity_text[:-3]
-        entity_inferred_name = entity_inferred_name[:-3]
-
+        (entity_text, entity_inferred_name) = get_row_entity_text_and_entity_inferred_name(row, column_indices)
         instance.attributes["entity_inferred_name"] = entity_inferred_name[:2048]
         instance.attributes['entity_text'] = entity_text[:2048]
         instance.attributes["id"] = 0
@@ -63,24 +54,41 @@ class EarmarkDetector:
         X, y, space = pipe.instances_to_matrix([instance,], feature_space = self.feature_space, dense = False)
         scores = self.model.decision_function(X)
         fields = ['congress', 'chamber','document_type','number', 'row', 'row_offset', 'row_length', 'score', 'state', 'sponsors'] 
-        cmd = "insert into candidate_earmarks (" + ", ".join(fields) + ") values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+        cmd = "insert into candidate_earmarks (" + ", ".join(fields) + ") values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) returning id"
         attributes = instance.attributes
         state = self.geo_coder.get_state(attributes['entity_text'])
         cur = self.conn.cursor()
 
 
-        sponsors = '%d ' % len(sponsor_indices)
+        sponsors = []
         for index in sponsor_indices:
-            sponsors += attributes['entity_text'].split("|")[index] + ' '
-        sponsors = sponsors[:-1]
-        sponsors = sponsors[:1024]
+            try:
+                sponsor_cell = attributes['entity_text'].split("|")[index]
+                sponsors_in_cell = string_functions.tokenize(string_functions.normalize_no_lower(sponsor_cell))
+                for sic in sponsors_in_cell:
+                    if sic in self.sponsor_coder.sponsors:
+                        sponsors.append(sic)
+
+            except Exception as e:
+                print "Index: %d" % index
+                print len(attributes['entity_text'].split("|"))
+                print attributes['entity_text']
+                logging.exception("SCREW UP")
+
+        sponsors_string = "|".join(sponsors)[:1024]
+
+        cur.execute(cmd, (congress, chamber, document_type, number, attributes['entity_text'], row.offset+table_offset, row.length, scores[0], state, sponsors_string))
+        curr_id = cur.fetchone()[0]
+
+        for sponsor in sponsors:
+            cur.execute('insert into sponsors (candidate_earmark_id, sponsor) values (%s, %s)', (curr_id,sponsor ))
 
 
-        cur.execute(cmd, (congress, chamber, document_type, number, attributes['entity_text'], row.offset+table_offset, row.length, scores[0], state, sponsors))
         self.conn.commit()
 
 
     def label_doc(self, doc_path, congress, chamber, document_type, number):
+        print doc_path
         paragraphs_list = text_table_tools.get_paragraphs(open(doc_path,'r'))
         tables = text_table_tools.identify_tables(paragraphs_list)
         for table in tables:
@@ -195,6 +203,7 @@ def label_all(directory, earmark_detector):
                     path_util = path_tools.BillPathUtils(path  = doc_path)
                     document_type = 'bill'
                     path_util.bill_number()
+                    number = path_util.bill_number()
 
                 earmark_detector.label_doc(doc_path, path_util.congress(), path_util.chamber(), document_type, number)
 
@@ -211,10 +220,11 @@ def main():
     bills2008 = "/mnt/data/sunlight/bills/110/bills/hr/hr2764/text-versions/"
     bills2009 = "/mnt/data/sunlight/bills/111/bills/hr/hr1105/text-versions/"
 
-    years = [ "111", "110","109", "108"] 
+    years = [ "111", "110","109", "108", "107", "106", "105", "104"] 
     reports_base="/mnt/data/sunlight/congress_reports/"
 
-    folders = [os.path.join(reports_base, year) for year in years] + [bills2008, bills2009]
+    #folders = [os.path.join(reports_base, year) for year in years] + [bills2008, bills2009]
+    folders = [bills2008, bills2009]
 
     CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
     conn = psycopg2.connect(CONN_STRING)

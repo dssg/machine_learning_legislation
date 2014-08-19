@@ -154,7 +154,9 @@ def do_grid_search(X, y, folds, clf, param_grid, scoring, X_test = None, y_test 
 
 
 def save_model(X, y, feature_space, folds, clf, param_grid, scoring, outfile):
-    model = get_optimal_model (X, y, folds, clf, param_grid, scoring)
+   #model = get_optimal_model (X, y, folds, clf, param_grid, scoring)
+    clf = svm.LinearSVC(C = 0.01)
+    model = clf.fit(X,y)
     joblib.dump(model, outfile, compress=9)
     pickle.dump(feature_space, open(outfile+'.feature_space','wb'))
 
@@ -186,40 +188,54 @@ def get_optimal_model (X, y, folds, clf, param_grid, scoring):
         return model
 
 
-def do_feature_selection(X, y):
-        all_tpr = []
-        train, test = split_data_stratified(X,y)
+def do_feature_selection(train_instances, test_instances, folds, clf, param_grid, dense, outfile):
+    keep_groups = set(train_instances[0].feature_groups.keys()).intersection(test_instances[0].feature_groups.keys())
 
-        for percentile in range(5, 45, 5):
-                t0 = time()
-                ch2 = SelectPercentile(chi2, percentile=percentile)
-                X_train = ch2.fit_transform(X[train], y[train])
-                print("done in %fs" % (time() - t0))
+    all_groups = set(train_instances[0].feature_groups.keys()).union(test_instances[0].feature_groups.keys())
 
-                model = get_model_with_optimal_C(X_train, y[train])
+    ignore_groups = all_groups.difference(keep_groups)
 
-                X_test = ch2.transform(X[test])
+    X_train, y_train, feature_space = pipe.instances_to_matrix(train_instances, dense = dense, ignore_groups =ignore_groups)
+    X_test, y_test = test_instances_to_matrix(feature_space, test_instances, dense = dense)
 
-                scores = model.decision_function(X_test)
-                fpr, tpr, thresholds = roc_curve(y[test], scores)
+    all_tpr = []
 
-                roc_auc = auc(fpr, tpr)
-                plt.plot(fpr, tpr, lw=1, label='%d  (area = %0.4f)' % (percentile, roc_auc))
-                print "\n"*4
+    (chi2values, pval) =  chi2(X_train, y_train)
+
+    feature_indices = [i[0] for i in sorted(enumerate(pval), key=lambda x:x[1])]
+    index_to_name = {v:k for k, v in feature_space.items()}
+    feature_names = [index_to_name[i] for i in feature_indices]
+
+    print feature_indices[0:200]
+    print feature_names[0:200]
+
+    for percentile in range(1, 5, 1):
+            t0 = time()
+            ch2 = SelectPercentile(chi2, percentile=percentile)
+            X_train_trans = ch2.fit_transform(X_train, y_train)
+            print("done in %fs" % (time() - t0))
+
+            model = get_optimal_model (X_train_trans, y_train, folds, clf, param_grid, 'roc_auc')
+
+            X_test_trans = ch2.transform(X_test)
+
+            scores = get_scores(model, X_test_trans)
+            fpr, tpr, thresholds = roc_curve(y_test, scores)
+            roc_auc = auc(fpr, tpr)
+            plt.plot(fpr, tpr, lw=1, label='%d  (area = %0.4f)' % (percentile, roc_auc))
+            print "\n"*4
 
 
-        plt.plot([0, 1], [0, 1], '--', color=(0.6, 0.6, 0.6), label='Luck')
-
-        
-        plt.xlim([-0.05, 1.05])
-        plt.ylim([-0.05, 1.05])
-        plt.xlabel('False Positive Rate')
-        plt.ylabel('True Positive Rate')
-        plt.title('Receiver operating characteristic example')
-        plt.legend(loc="lower right")
-        plt.savefig('feature_selection.png')
-        
-        print()
+    plt.plot([0, 1], [0, 1], '--', color=(0.6, 0.6, 0.6), label='Luck')
+    plt.xlim([-0.05, 1.05])
+    plt.ylim([-0.05, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Receiver operating characteristic example')
+    plt.legend(loc="lower right")
+    plt.savefig('feature_selection.png')
+    
+    print()
 
 
 
@@ -227,7 +243,6 @@ def do_feature_set_analysis(train_instances, test_instances, folds, clf, param_g
 
     groups = set(train_instances[0].feature_groups.keys()).intersection(test_instances[0].feature_groups.keys())
     opt_groups = set()
-    classifier = svm.LinearSVC(C = 0.01)
 
     X_train, y_train, feature_space = pipe.instances_to_matrix(train_instances, dense = dense)
     X_test, y_test = test_instances_to_matrix(feature_space, test_instances, dense = dense)
@@ -397,6 +412,7 @@ def main():
 
 
 
+
         args = parser.parse_args() 
 
         print "Doing %s" % args.subparser_name
@@ -415,8 +431,10 @@ def main():
 
         if args.subparser_name == "save":
 
+            keep_group = ['unigram_feature_generator', 'simple_entity_text_feature_generator', 'geo_feature_generator']
             instances = prepare_earmark_data.load_instances(args.train)
-            X, y, feature_space = pipe.instances_to_matrix(instances, dense = dense)
+            ignore_groups = [ fg for fg in instances[0].feature_groups.keys() if fg not in keep_group]
+            X, y, feature_space = pipe.instances_to_matrix(instances, dense = dense, ignore_groups = ignore_groups)
             save_model(X, y, feature_space, args.folds, clf, param_grid, args.scoring, args.outfile)
 
         elif args.subparser_name =="error":
@@ -460,7 +478,8 @@ def main():
                 train_instances = [instances[i] for i in train]
                 test_instances = [instances[i] for i in test]
                 
-            #do_feature_selection(X, y)
+            #do_feature_selection(train_instances, test_instances, args.folds, clf, param_grid, dense, args.outfile)
+
             do_feature_set_analysis(train_instances, test_instances, args.folds, clf, param_grid, dense, args.outfile)
 
 

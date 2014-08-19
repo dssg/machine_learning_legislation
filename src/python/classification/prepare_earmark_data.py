@@ -17,7 +17,7 @@ import scipy
 from dao.Entity import Entity
 #from dao.Student import Student
 
-from feature_generators import wikipedia_categories_feature_generator, entity_text_bag_feature_generator, simple_entity_text_feature_generator, gen_geo_features,calais_feature_generator, prefix_feature_generator
+from feature_generators import wikipedia_categories_feature_generator, entity_text_bag_feature_generator, simple_entity_text_feature_generator, gen_geo_features,calais_feature_generator, prefix_feature_generator, sponsor_feature_generator
 from instance import Instance
 from pipe import Pipe
 import cPickle as pickle
@@ -109,7 +109,7 @@ def main():
 
     parser_add = subparsers.add_parser('add', help='add to pickled instances')
     parser_add.add_argument('--data_folder', required=True, help='path to output pickled files')
-    parser_add.add_argument('--threads', type=int, default = mp.cpu_count(), help='number of threads to run in parallel')
+    parser_add.add_argument('--threads', type=int, default = 1, help='number of threads to run in parallel')
 
 
 
@@ -155,8 +155,9 @@ def main():
         #entity_text_bag_feature_generator.bigram_feature_generator(force=True),
         #simple_entity_text_feature_generator.simple_entity_text_feature_generator(force=True),
         #gen_geo_features.geo_feature_generator(force = True),
-        calais_feature_generator.CalaisFeatureGenerator(force=True),
-        prefix_feature_generator.PrefixFeatureGenerator(force=True, prefixes = ['O&M', 'for'])
+        #calais_feature_generator.CalaisFeatureGenerator(force=True),
+        #prefix_feature_generator.PrefixFeatureGenerator(force=True, prefixes = ['O&M', 'for'])
+        sponsor_feature_generator.SponsorFeatureGenerator(force = True),
         ]
 
 

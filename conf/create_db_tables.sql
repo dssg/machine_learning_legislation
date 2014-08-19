@@ -26,14 +26,15 @@ create table candidate_earmarks
 id serial primary key,
 congress integer,
 chamber varchar(10),
+number varchar(48),
 document_type varchar(6),
 city varchar(128),
 state varchar(2),
-county varchar(128),
 row varchar(2048),
 row_offset integer,
 row_length integer,
-score float
+score float,
+sponsors varchar(1024)
 )
 
 

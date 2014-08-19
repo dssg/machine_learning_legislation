@@ -100,7 +100,7 @@ def instances_to_matrix(instances, ignore_groups=[], feature_space=None, dense =
                 else:
                     X[i, feature_space[f.name]] =  f.value
         Y.append(instances[i].target_class)
-    logging.info("%d Instances loaded with %d features" %(X.shape[0], X.shape[1]))
+    logging.debug("%d Instances loaded with %d features" %(X.shape[0], X.shape[1]))
 
     if not dense:
         return scipy.sparse.csr_matrix(X), np.array(Y), feature_space 
