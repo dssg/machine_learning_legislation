@@ -62,7 +62,9 @@ def percent_capitalized(s):
                 count +=1.0
     return count/len(tokens)
 
-
+def alpha_tokens_count(s):
+    tokens = s.split()
+    return len([t for t in tokens if t.isalpha()])
 
 feature_functions = [
 ('num_all_caps', num_all_caps), 
@@ -72,6 +74,7 @@ feature_functions = [
 ('num_digits', num_digits),
 ('starts_with_for', starts_with_for), 
 ('percent_capitalized', percent_capitalized),
+('alpha_tokens_count', alpha_tokens_count),
 ]
 
     
