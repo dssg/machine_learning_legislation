@@ -154,9 +154,9 @@ def do_grid_search(X, y, folds, clf, param_grid, scoring, X_test = None, y_test 
 
 
 def save_model(X, y, feature_space, folds, clf, param_grid, scoring, outfile):
-   #model = get_optimal_model (X, y, folds, clf, param_grid, scoring)
-    clf = svm.LinearSVC(C = 0.01)
-    model = clf.fit(X,y)
+    model = get_optimal_model (X, y, folds, clf, param_grid, scoring)
+    #clf = svm.LinearSVC(C = 0.01)
+    #model = clf.fit(X,y)
     joblib.dump(model, outfile, compress=9)
     pickle.dump(feature_space, open(outfile+'.feature_space','wb'))
 

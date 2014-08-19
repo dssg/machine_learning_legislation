@@ -219,12 +219,14 @@ def main():
 
     bills2008 = "/mnt/data/sunlight/bills/110/bills/hr/hr2764/text-versions/"
     bills2009 = "/mnt/data/sunlight/bills/111/bills/hr/hr1105/text-versions/"
-
     years = [ "111", "110","109", "108", "107", "106", "105", "104"] 
+
+    years = ["104", ]
     reports_base="/mnt/data/sunlight/congress_reports/"
 
     #folders = [os.path.join(reports_base, year) for year in years] + [bills2008, bills2009]
-    folders = [bills2008, bills2009]
+    #folders = [bills2008, bills2009]
+    folders = [os.path.join(reports_base, year) for year in years]
 
     CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
     conn = psycopg2.connect(CONN_STRING)

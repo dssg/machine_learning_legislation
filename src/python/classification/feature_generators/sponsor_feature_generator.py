@@ -34,16 +34,24 @@ class SponsorFeatureGenerator:
 
 
 
+    def has_sponsor(self, cell):
+        
+
+
     def has_sponsor(self, text):
         """
         Input: text
         Output: boolean for politician name in text
         """
-
-        tokens = string_functions.tokenize(string_functions.normalize_no_lower(text))
-        for token in tokens:
-            if token in self.sponsors:
-                print token
+        cells = text.split(' | ')
+        for cell in cells:
+            tokens = re.split('[:;, ]', cell)
+            n = len(tokens)
+            num_sponsors = 0
+            for token in tokens:
+                if token in self.sponsors:
+                    num_sponsors +=1
+            if num_sponsors/n > 0.7:
                 return 1
         return 0
 
