@@ -70,9 +70,8 @@ values.**
 
 To link reports and bills:
 
-1) Run the script `src/python/bill_fetcher/associate_reports_bills.py`. This
+1. Run the script `src/python/bill_fetcher/associate_reports_bills.py`. This
 will generate a csv file linkins bill paths and report paths.
-2) The script `src/python/data_importer/populate_bills_reports.py` uses the
+2. The script `src/python/data_importer/populate_bills_reports.py` uses the
 above csv as an input and outputs another csv with linked report and bill id's.
-3) This csv can be dumped into the `bill_reports` table.
-
+3. This csv can be dumped into the `bill_reports` table.
