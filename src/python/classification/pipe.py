@@ -80,23 +80,28 @@ class Pipe:
     
             
             
-def instances_to_matrix(instances, ignore_groups=[], feature_space=None, dense = False):
+def instances_to_matrix(instances, groups=[], feature_space=None, dense = False):
     """
     ingore_groups: list containing generator names to ignore their features
     """
+    use_given_feature_space = True
+
     if feature_space == None:
-        feature_space = build_feature_space(instances, ignore_groups=[])
+        use_given_feature_space = False
+        feature_space = build_feature_space(instances, groups=groups)
+
 
     logging.debug("%d instances, %d features" %(len(instances), len(feature_space)))
     X = scipy.sparse.lil_matrix((len(instances), len(feature_space)))
     Y = []
     for i in range(len(instances)):
         for f_group, features in instances[i].feature_groups.iteritems():
-            if f_group in ignore_groups:
+            if f_group not in groups and not use_given_feature_space:
                 continue
             for f_name, f in features.iteritems():
                 if not f.name in feature_space:
-                    logging.warning("%s is not in the feature space, ignoring!"%(f.name))
+                    #logging.warning("%s is not in the feature space, ignoring!"%(f.name))
+                    pass
                 else:
                     X[i, feature_space[f.name]] =  f.value
         Y.append(instances[i].target_class)
@@ -109,12 +114,12 @@ def instances_to_matrix(instances, ignore_groups=[], feature_space=None, dense =
 
 
     
-def build_feature_space(instances, ignore_groups=[]):
+def build_feature_space(instances, groups=[]):
     feature_space = {}
     index = 0
     for i in instances:
         for f_group, features in i.feature_groups.iteritems():
-            if f_group in ignore_groups:
+            if f_group not in groups:
                 continue
             for f_name, f in features.iteritems():
                 if not feature_space.has_key(f.name):

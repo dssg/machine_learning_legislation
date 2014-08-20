@@ -9,7 +9,7 @@ import cPickle as pickle
 from instance import Instance
 from pipe import Pipe
 import pipe
-from feature_generators import  entity_text_bag_feature_generator, simple_entity_text_feature_generator, gen_geo_features
+from feature_generators import  entity_text_bag_feature_generator, simple_entity_text_feature_generator, gen_geo_features, sponsor_feature_generator
 import prepare_earmark_data
 import diagnostics
 from sklearn import svm
@@ -19,6 +19,10 @@ from matching import string_functions
 import csv
 import re
 import util
+import multiprocessing as mp
+from pprint import pprint
+
+CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
 
 
 
@@ -34,6 +38,8 @@ class EarmarkDetector:
             entity_text_bag_feature_generator.unigram_feature_generator(force=True),
             simple_entity_text_feature_generator.simple_entity_text_feature_generator(force=True),
             gen_geo_features.geo_feature_generator(force = True),
+            sponsor_feature_generator.SponsorFeatureGenerator(force = True),
+
         ]
         self.pipe = Pipe(fgs, num_processes=1)
 
@@ -58,7 +64,8 @@ class EarmarkDetector:
         attributes = instance.attributes
         state = self.geo_coder.get_state(attributes['entity_text'])
         cur = self.conn.cursor()
-
+        if sponsor_indices:
+            print sponsor_indices
 
         sponsors = []
         for index in sponsor_indices:
@@ -66,7 +73,7 @@ class EarmarkDetector:
                 sponsor_cell = attributes['entity_text'].split("|")[index]
                 sponsors_in_cell = string_functions.tokenize(string_functions.normalize_no_lower(sponsor_cell))
                 for sic in sponsors_in_cell:
-                    if sic in self.sponsor_coder.sponsors:
+                    if sic in self.sponsor_coder.sponsors[congress]:
                         sponsors.append(sic)
 
             except Exception as e:
@@ -94,7 +101,7 @@ class EarmarkDetector:
         for table in tables:
             table_offset = table.offset
             column_indices = sorted(text_table_tools.get_candidate_columns(table))
-            sponsor_indices = self.sponsor_coder.find_sponsor_index(table)
+            sponsor_indices = self.sponsor_coder.find_sponsor_index(table, congress)
             for row in table.rows:
                 self.label_row(row, column_indices, table_offset, congress, chamber, document_type, number, sponsor_indices)
 
@@ -148,39 +155,64 @@ class GeoCoder:
 class SponsorCoder:
 
     def __init__(self):
-        self.sponsors = set()
+        self.sponsors = {i:set() for i in range(1, 114)}
 
-        for row in csv.reader(open("/mnt/data/sunlight/misc/legislators.csv", 'rU')):
-            self.sponsors.add(row[0])
+        for row in csv.reader(open("/mnt/data/sunlight/misc/senators.csv", 'r')):
+            congress = int(row[0])
+            if congress == 20:
+                print row
+                print row[5]
+                print row[6]
+            sen = re.split('[:;, ]', row[6])[0].title()
+            if sen.isalpha():
+                self.sponsors[congress].add(sen)
+
+        for row in csv.reader(open("/mnt/data/sunlight/misc/representatives.csv", 'r')):
+            congress = int(row[0])
+            if congress == 20:
+                print row
+                print row[5]
+                print row[6]
+            rep = re.split('[:;, ]', row[5])[0].title()
+            if rep.isalpha():
+                self.sponsors[congress].add(rep)
+
+        #pprint(self.sponsors)
 
 
-    def find_sponsor_index(self, table):
+
+    def find_sponsor_index(self, table, congress):
         if len(table.rows) ==0 :
             return None
         m = len(table.rows)
         n = len(table.rows[0].cells)
 
         columns = [ [table.rows[i].cells[j].clean_text for i in range(m) ] for j in range(n) ]
-        sponsor_densities = [(self.compute_sponsor_density(columns[j]), j ) for j in range(n)]
-
+        sponsor_densities = [(self.compute_sponsor_density(columns[j], congress), j ) for j in range(n)]
         sponsor_densities = sorted(sponsor_densities, reverse = True, key = lambda x : x[0])
         indices = [t[1] for t in sponsor_densities if t[0] > 0.1]
 
         return indices[:2]
 
 
-    def compute_sponsor_density(self, column):
-        return sum([self.has_sponsor(cell) for cell in column]) / float(len(column))
+    def compute_sponsor_density(self, column, congress):
+        return sum([self.has_sponsor(cell, congress) for cell in column]) / float(len(column))
 
 
 
-    def has_sponsor(self, cell):
+    def has_sponsor(self, cell, congress):
         tokens = re.split('[:;, ]', cell)
         n = len(tokens)
-        num_sponsors = 0
+        num_sponsors = 0.0
         for token in tokens:
-            if token in self.sponsors:
+            token = token.strip()
+
+            if token in self.sponsors[congress]:
                 num_sponsors +=1
+            elif token in set(['Rep', 'Rep.', 'Sen', 'Sen.']):
+                print token
+                num_sponsors +=1
+
         if num_sponsors/n > 0.7:
             return 1
         else:
@@ -190,7 +222,10 @@ class SponsorCoder:
 
 
 
-def label_all(directory, earmark_detector):
+def label_all(t):
+    directory = t[0]
+    earmark_detector = t[1]
+    earmark_detector.conn = psycopg2.connect(CONN_STRING)
     for root, directories, files in os.walk(directory):
         for filename in files:
             if filename == "document.txt" or "." not in filename:
@@ -206,6 +241,7 @@ def label_all(directory, earmark_detector):
                     number = path_util.bill_number()
 
                 earmark_detector.label_doc(doc_path, path_util.congress(), path_util.chamber(), document_type, number)
+    earmark_detector.conn.close()
 
 
 
@@ -214,21 +250,17 @@ def main():
     parser = argparse.ArgumentParser(description='Match entities to OMB')
     parser.add_argument('--model', required = False, help='path to pickeld matching model')
     parser.add_argument('--data', required = False, help='path to pickeld instances')
+    #parser.add_argument('--path', required = False)
 
     args = parser.parse_args()
 
     bills2008 = "/mnt/data/sunlight/bills/110/bills/hr/hr2764/text-versions/"
     bills2009 = "/mnt/data/sunlight/bills/111/bills/hr/hr1105/text-versions/"
     years = [ "111", "110","109", "108", "107", "106", "105", "104"] 
-
-    years = ["104", ]
     reports_base="/mnt/data/sunlight/congress_reports/"
+    folders = [os.path.join(reports_base, year) for year in years] + [bills2008, bills2009]
+    
 
-    #folders = [os.path.join(reports_base, year) for year in years] + [bills2008, bills2009]
-    #folders = [bills2008, bills2009]
-    folders = [os.path.join(reports_base, year) for year in years]
-
-    CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
     conn = psycopg2.connect(CONN_STRING)
 
     if args.model:
@@ -237,7 +269,7 @@ def main():
         logging.info("Loaded Model")
 
     elif args.data:
-        keep_group = ['unigram_feature_generator', 'simple_entity_text_feature_generator', 'geo_feature_generator']
+        keep_group = ['unigram_feature_generator', 'simple_entity_text_feature_generator', 'geo_feature_generator', 'sponsor_feature_generator']
         instances = prepare_earmark_data.load_instances(args.data)
         ignore_groups = [ fg for fg in instances[0].feature_groups.keys() if fg not in keep_group]
         X, y, feature_space = pipe.instances_to_matrix(instances, ignore_groups = ignore_groups,  dense = False)
@@ -250,10 +282,17 @@ def main():
     geo_coder = GeoCoder()
     sponsor_coder = SponsorCoder()
 
+
     earmark_detector = EarmarkDetector(geo_coder, sponsor_coder, conn, model, feature_space)
 
-    for folder in folders:
-       label_all(folder, earmark_detector);
+
+    p = mp.Pool(mp.cpu_count())
+    p.map(label_all, [(folder, earmark_detector) for folder in folders])
+
+
+    #for folder in folders:
+    #   label_all((folder, earmark_detector));
+
     conn.close()
 
 

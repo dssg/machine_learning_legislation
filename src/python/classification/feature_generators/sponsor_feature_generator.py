@@ -5,7 +5,7 @@ from matching import string_functions
 import csv
 from classification.feature import Feature
 import logging
-
+import re
 
 class SponsorFeatureGenerator:
     def __init__(self, **kwargs):
@@ -15,7 +15,7 @@ class SponsorFeatureGenerator:
         self.sponsors = set()
         for row in csv.reader(open("/mnt/data/sunlight/misc/legislators.csv", 'rU')):
             self.sponsors.add(row[0])
-        self.sponsors = self.sponsors.difference(set(['Law', 'Page', 'New']))
+        self.sponsors = self.sponsors.difference(set(['Law', 'Page', 'New', 'Fort', 'Camp', 'Field']))
 
     def operate(self,instance):
         """                                                                               
@@ -28,14 +28,10 @@ class SponsorFeatureGenerator:
 
 
         text = instance.attributes["entity_inferred_name"]
-        
+
         instance.feature_groups[self.name]['SPONSOR_FEAUTURE_has_sponsor'] = Feature('SPONOSR_FEAUTURE_has_sponsor', self.has_sponsor(text))
         logging.debug( "Feature count %d for entity id: %d after %s" %(instance.feature_count(),instance.attributes["id"], self.name))
 
-
-
-    def has_sponsor(self, cell):
-        
 
 
     def has_sponsor(self, text):
@@ -47,7 +43,7 @@ class SponsorFeatureGenerator:
         for cell in cells:
             tokens = re.split('[:;, ]', cell)
             n = len(tokens)
-            num_sponsors = 0
+            num_sponsors = 0.0
             for token in tokens:
                 if token in self.sponsors:
                     num_sponsors +=1

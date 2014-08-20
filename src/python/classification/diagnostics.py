@@ -154,9 +154,9 @@ def do_grid_search(X, y, folds, clf, param_grid, scoring, X_test = None, y_test 
 
 
 def save_model(X, y, feature_space, folds, clf, param_grid, scoring, outfile):
-    model = get_optimal_model (X, y, folds, clf, param_grid, scoring)
-    #clf = svm.LinearSVC(C = 0.01)
-    #model = clf.fit(X,y)
+    #model = get_optimal_model (X, y, folds, clf, param_grid, scoring)
+    clf = svm.LinearSVC(C = 0.01)
+    model = clf.fit(X,y)
     joblib.dump(model, outfile, compress=9)
     pickle.dump(feature_space, open(outfile+'.feature_space','wb'))
 
@@ -189,19 +189,14 @@ def get_optimal_model (X, y, folds, clf, param_grid, scoring):
 
 
 def do_feature_selection(train_instances, test_instances, folds, clf, param_grid, dense, outfile):
-    keep_groups = set(train_instances[0].feature_groups.keys()).intersection(test_instances[0].feature_groups.keys())
+    groups = set(train_instances[0].feature_groups.keys()).intersection(test_instances[0].feature_groups.keys())
 
-    all_groups = set(train_instances[0].feature_groups.keys()).union(test_instances[0].feature_groups.keys())
-
-    ignore_groups = all_groups.difference(keep_groups)
-
-    X_train, y_train, feature_space = pipe.instances_to_matrix(train_instances, dense = dense, ignore_groups =ignore_groups)
+    X_train, y_train, feature_space = pipe.instances_to_matrix(train_instances, dense = dense, groups = groups)
     X_test, y_test = test_instances_to_matrix(feature_space, test_instances, dense = dense)
 
     all_tpr = []
 
     (chi2values, pval) =  chi2(X_train, y_train)
-
     feature_indices = [i[0] for i in sorted(enumerate(pval), key=lambda x:x[1])]
     index_to_name = {v:k for k, v in feature_space.items()}
     feature_names = [index_to_name[i] for i in feature_indices]
@@ -209,7 +204,7 @@ def do_feature_selection(train_instances, test_instances, folds, clf, param_grid
     print feature_indices[0:200]
     print feature_names[0:200]
 
-    for percentile in range(1, 5, 1):
+    for percentile in range(1, 10, 2):
             t0 = time()
             ch2 = SelectPercentile(chi2, percentile=percentile)
             X_train_trans = ch2.fit_transform(X_train, y_train)
@@ -242,35 +237,36 @@ def do_feature_selection(train_instances, test_instances, folds, clf, param_grid
 def do_feature_set_analysis(train_instances, test_instances, folds, clf, param_grid, dense, outfile):
 
     groups = set(train_instances[0].feature_groups.keys()).intersection(test_instances[0].feature_groups.keys())
-    opt_groups = set()
 
-    X_train, y_train, feature_space = pipe.instances_to_matrix(train_instances, dense = dense)
+    X_train, y_train, feature_space = pipe.instances_to_matrix(train_instances, dense = dense, groups = groups)
     X_test, y_test = test_instances_to_matrix(feature_space, test_instances, dense = dense)
     model = get_optimal_model(X_train, y_train, folds, clf, param_grid, 'roc_auc')
     scores =  get_scores(model, X_test) 
-
     fpr, tpr, thresholds = roc_curve(y_test, scores)
+    np.set_printoptions(threshold='nan')
+
+    for i in range(1, len(fpr), 100):
+        print "Theshold: %0.4f  FPR: %0.4f   TPR: %0.4f" % (thresholds[i], fpr[i], tpr[i])
+
     roc_auc = auc(fpr, tpr)
+
     plt.plot(fpr, tpr, lw=1, label='ALL  (area = %0.4f)' % (roc_auc))
 
 
     all_tpr = []
 
     for g in groups:
-            keep_groups = copy.copy(opt_groups)
-            keep_groups.add(g)
-            print keep_groups
+        print g
 
-            X_train, y_train, feature_space = pipe.instances_to_matrix(train_instances, ignore_groups = groups.difference(keep_groups), dense = dense)
-            X_test, y_test = test_instances_to_matrix(feature_space, test_instances, dense = dense)
+        X_train, y_train, feature_space = pipe.instances_to_matrix(train_instances, groups = [g,], dense = dense)
+        X_test, y_test = test_instances_to_matrix(feature_space, test_instances, dense = dense)
 
-            model = get_optimal_model(X_train, y_train,  folds, clf, param_grid, 'roc_auc')
-
-            scores =  scores =  get_scores(model, X_test)
-            fpr, tpr, thresholds = roc_curve(y_test, scores)
-            roc_auc = auc(fpr, tpr)
-            plt.plot(fpr, tpr, lw=1, label='%s  (area = %0.4f)' % (g.split("_")[0], roc_auc))
-            print "\n"*4
+        model = get_optimal_model(X_train, y_train,  folds, clf, param_grid, 'roc_auc')
+        scores = get_scores(model, X_test)
+        fpr, tpr, thresholds = roc_curve(y_test, scores)
+        roc_auc = auc(fpr, tpr)
+        plt.plot(fpr, tpr, lw=1, label='%s  (area = %0.4f)' % (g.split("_")[0], roc_auc))
+        print "\n"*4
 
     plt.plot([0, 1], [0, 1], '--', color=(0.6, 0.6, 0.6), label='Luck')
     plt.xlim([-0.05, 1.05])
@@ -365,16 +361,13 @@ def split_data_stratified(X, y, test_size = 0.33):
 
 
 
-def test_instances_to_matrix(feature_space, instances, ignore_groups=[], dense = False):
+def test_instances_to_matrix(feature_space, instances, dense = False):
     X = scipy.sparse.lil_matrix((len(instances), len(feature_space)))
     Y = []
-    keys = set(feature_space.keys())
     for i in range(len(instances)):
         for f_group, features in instances[i].feature_groups.iteritems():
-            if f_group in ignore_groups:
-                continue
             for f_name, f in features.iteritems():
-                    if f.name in keys:
+                    if f.name in feature_space:
                         X[i, feature_space[f.name]] =  f.value
 
         Y.append(instances[i].target_class)
@@ -430,11 +423,15 @@ def main():
             dense = True
 
         if args.subparser_name == "save":
+            
 
-            keep_group = ['unigram_feature_generator', 'simple_entity_text_feature_generator', 'geo_feature_generator']
+            groups = ['unigram_feature_generator', 'simple_entity_text_feature_generator', 'geo_feature_generator', 'sponsor_feature_generator']
+
             instances = prepare_earmark_data.load_instances(args.train)
-            ignore_groups = [ fg for fg in instances[0].feature_groups.keys() if fg not in keep_group]
-            X, y, feature_space = pipe.instances_to_matrix(instances, dense = dense, ignore_groups = ignore_groups)
+            print instances[0].feature_groups.keys()
+            print instances[-1].feature_groups.keys()
+
+            X, y, feature_space = pipe.instances_to_matrix(instances, dense = dense, groups = groups)
             save_model(X, y, feature_space, args.folds, clf, param_grid, args.scoring, args.outfile)
 
         elif args.subparser_name =="error":
