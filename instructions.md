@@ -6,6 +6,13 @@ classifier.
   - **Note:** In order to install psycopg2 with pip, you will also need to
     install the system packages libpq-dev and python-dev.
 - beautifulsoup4
+- numpy
+- scipy
+- mysql-connector-python
+- requests
+- nltk
+- nose
+- pandas
 
 ### Getting Data ###
 
@@ -75,3 +82,30 @@ will generate a csv file linkins bill paths and report paths.
 2. The script `src/python/data_importer/populate_bills_reports.py` uses the
 above csv as an input and outputs another csv with linked report and bill id's.
 3. This csv can be dumped into the `bill_reports` table.
+
+### Classification ###
+
+#### OMB Matching ####
+
+Our goal is to create a classifier that classifies entities in tables as
+earmarks or not. In order to create positive examples, we link entries from the
+OMB database to table rows in documents. We also treat this as a classification
+problem, first hand labeling several matches and using features of these matches
+to identify the rest.
+
+The script `src/python/matching/label_matches.py` can be used for hand labeling
+examples.
+
+For use in our classification pipeline, the labeled instances must be
+serialized. Use the script `src/python/matching/prepare_matching_data` with the
+serialize flag to create Python pickles.
+
+The `src/python/matching/classifier.py` script can be used with the `build` flag
+to create a serialized model of the matching classifier.
+
+Finally, the `src/python/matching/ml_matching.py` script can be passed this
+pickled classifier in order to match the rest of the rows.
+
+#### Earmark Classification ####
+
+
