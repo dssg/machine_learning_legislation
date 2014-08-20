@@ -75,15 +75,21 @@ class Pipe:
 
 
 
-    def instances_to_matrix(self, ignore_groups=[], dense = False):
-        return instances_to_scipy_sparse(self.instances, ignore_groups=ignore_groups)
+    def instances_to_matrix(self, groups=None, dense = False):
+        if not goups:
+            groups = self.instances[0].feature_groups.keys()
+        return instances_to_scipy_sparse(self.instances, groups=groups)
     
             
             
-def instances_to_matrix(instances, groups=[], feature_space=None, dense = False):
+def instances_to_matrix(instances, groups= None, feature_space=None, dense = False):
     """
     ingore_groups: list containing generator names to ignore their features
     """
+
+    if not groups:
+        groups = instances[0].feature_groups.keys()
+
     use_given_feature_space = True
 
     if feature_space == None:

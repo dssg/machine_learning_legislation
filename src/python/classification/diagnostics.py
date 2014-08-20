@@ -102,8 +102,7 @@ def do_grid_search(X, y, folds, clf, param_grid, scoring, X_test = None, y_test 
         roc = []
 
         for i, (train, test) in enumerate(cv):
-            #model = get_optimal_model (X[train], y[train], folds, clf, param_grid, scoring)
-            model = clf.fit(X[train], y[train])
+            model = get_optimal_model (X[train], y[train], folds, clf, param_grid, scoring)
             logging.info("Finished Training fold %d" %(i))
             y_pred = model.predict(X[test])
             scores = get_scores(model, X[test])
@@ -403,9 +402,6 @@ def main():
 
         parser_error = subparsers.add_parser('relabel', help='do error analysis')
 
-
-
-
         args = parser.parse_args() 
 
         print "Doing %s" % args.subparser_name
@@ -447,7 +443,8 @@ def main():
             if args.test:
                 train_instances = prepare_earmark_data.load_instances(args.train)
                 test_instances = prepare_earmark_data.load_instances(args.test)
-                X_train, y_train, feature_space = pipe.instances_to_matrix(train_instances, dense = dense)
+                groups = set(train_instances[0].feature_groups.keys()).intersection(test_instances[0].feature_groups.keys())
+                X_train, y_train, feature_space = pipe.instances_to_matrix(train_instances, dense = dense, groups = groups)
                 X_test, y_test = test_instances_to_matrix(feature_space, test_instances, dense = dense)
                 
 
@@ -457,7 +454,6 @@ def main():
                 X_test = None
                 y_test = None
                 
-
             do_grid_search(X_train, y_train, args.folds, clf, param_grid, args.scoring, X_test, y_test)
             
 

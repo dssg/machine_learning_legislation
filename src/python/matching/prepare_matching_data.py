@@ -90,10 +90,8 @@ def main():
         logging.info("Creating pipe")
         fgs = [
             JaccardFeatureGenerator(),
-            InfixFeatureGenerator(), 
-            TableFeatureGenerator(),
         ]
-        pipe = Pipe(fgs, instances, num_processes=args.threads)
+        pipe = Pipe(fgs, instances, num_processes=1)
         logging.info("Pushing into pipe")
         pipe.push_all_parallel()
 
@@ -106,7 +104,7 @@ def main():
             DifferenceFeatureGenerator(pairs = pairs)
         ]
         grouper = InstancesGrouper(['earmark_id', 'document_id'])
-        pipe = BlocksPipe(grouper, fgs, pipe.instances, num_processes=args.threads )
+        pipe = BlocksPipe(grouper, fgs, pipe.instances, num_processes=1 )
         pipe.push_all_parallel()
 
 
