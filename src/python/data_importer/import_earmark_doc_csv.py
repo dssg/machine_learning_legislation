@@ -1,4 +1,6 @@
-import os, sys
+import os, sys, inspect
+sys.path.insert(0, os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],".."))))
+from util import configuration
 import psycopg2
 import csv, pandas as pd
 import codecs
@@ -6,7 +8,7 @@ from pprint import pprint
 
 USAGE = "python %s <input-csv-file>" %(sys.argv[0])
 
-CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
+CONN_STRING = configuration.get_connection_string()
 
 def import_csv_file(path):
     rows  = []
@@ -26,7 +28,7 @@ def import_csv_file(path):
  values (%s, %s, %s, %s)"
     params = rows; pprint(rows); return
     cur = conn.cursor()
-#r.execute ("delete from earmark_documents")                                       
+#r.execute ("delete from earmark_documents")
     cur.executemany(cmd, params)
     conn.commit()
     conn.close()

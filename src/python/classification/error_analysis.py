@@ -4,16 +4,16 @@ from pprint import pprint
 import argparse
 import psycopg2
 import psycopg2.extras
-import codecs 
+import codecs
 import logging
 from dao.Entity import Entity
-from util import prompt, path_tools, amend_earmark
+from util import prompt, path_tools, amend_earmark, configuration
 
-CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
+CONN_STRING = configuration.get_connection_string()
 
 
 def analyze_entity(entity_id):
-    
+
     if entity_is_earmark(entity_id):
         print "Entity is matched to earmark already, your data might be stale. Ignoring entity %d" %(entity_id)
         return
@@ -43,7 +43,7 @@ def analyze_entity(entity_id):
             amend_earmark.insert_entity_to_negative_table(entity_id)
             print "Entity %d has been labeled as negative example" %(entity_id)
     print chr(27) + "[2J" # this clears the terminal
-                
+
 def entity_is_earmark(entity_id):
     cmd = "select earmark_document_id from earmark_document_matched_entities where matched_entity_id = %s"
     parameters = (entity_id,)
@@ -63,12 +63,12 @@ def check_row_exists(cmd, parameters):
         logging.exception("Error in checking if an entity is an earmark match")
     finally:
         conn.close()
-            
+
 def entity_is_negative_example(entity_id):
     cmd = "select entity_id from manual_negative_examples where entity_id = %s"
     parameters = (entity_id,)
     return check_row_exists(cmd, parameters)
-    
+
 
 def analyze_entity_earmark_pair(entity_attr, earmark_attr):
     print  entity_attr.entity.entity_inferred_name
@@ -76,7 +76,7 @@ def analyze_entity_earmark_pair(entity_attr, earmark_attr):
     print "\n"*2
     #if prompt.query_yes_no("Do they match?", default="yes"):
     #    pass #match_earmark_with_entity(earmark_attr.earmark.earmark_id, entity_attr.entity.id)
-    
+
 def match_earmark_with_entity(earmark_id, entity_id):
     conn = psycopg2.connect(CONN_STRING)
     cmd = "update row_matching_labels set label=True where earmark_id = %s and entity_id = %s"
@@ -89,9 +89,9 @@ def match_earmark_with_entity(earmark_id, entity_id):
         conn.rollback()
     finally:
         conn.close()
-    
-       
-                
-            
-        
-        
+
+
+
+
+
+

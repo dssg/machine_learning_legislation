@@ -5,6 +5,7 @@ import os, sys, inspect
 sys.path.insert(0, os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],".."))))
 sys.path.insert(0, os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],"../.."))))
 from util import wiki_tools
+from util import configuration
 from pprint import pprint
 import logging
 import numpy as np
@@ -21,8 +22,8 @@ class wikipedia_categories_feature_generator:
         self.force = kwargs.get("force", True)
         self.feature_prefix = "WIKI_CATEGORY_"
         self.NO_WIKI_PAGE_FEATURE = "NO_WIKIPEDIA_PAGE_WAS_FOUND"
-        self.CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
-            
+        self.CONN_STRING = configuration.get_connection_string()
+
     def entity_id_to_wikipage(self, entity_id):
         """
         given an entity id, returns the corresponding wikipedia page.
@@ -69,7 +70,7 @@ class wikipedia_categories_feature_generator:
         finally:
             conn.close()
 
-            
+
     def operate(self, instance):
         """
         given an instance a list of categories as features
@@ -91,7 +92,7 @@ class wikipedia_categories_feature_generator:
                     level = categories[i]
                     for cat in level:
                         feature_name = self.feature_prefix +str(i+1)+"_"+cat
-                        instance.feature_groups[self.name][feature_name] =  Feature(feature_name, 1)  
+                        instance.feature_groups[self.name][feature_name] =  Feature(feature_name, 1)
             else:
                 for level in categories:
                     for cat in level:
@@ -99,6 +100,6 @@ class wikipedia_categories_feature_generator:
                         instance.feature_groups[self.name][feature_name] = Feature(feature_name, 1)
         else:
             instance.feature_groups[self.name][self.NO_WIKI_PAGE_FEATURE] = Feature(self.NO_WIKI_PAGE_FEATURE,1)
-            
+
         logging.debug( "Feature count %d for entity id: %d after %s" %(instance.feature_count(),instance.attributes["id"], self.name))
-        
+

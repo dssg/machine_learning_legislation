@@ -4,7 +4,7 @@ classification methods
 import os, sys, inspect
 sys.path.insert(0, os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],".."))))
 import argparse
-from util import wiki_tools
+from util import wiki_tools, configuration
 from pprint import pprint
 import psycopg2
 import logging
@@ -27,12 +27,12 @@ from multiprocessing import Manager
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 
-CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
+CONN_STRING = configuration.get_connection_string()
 
 
 manager = Manager()
 global_data= manager.list([])
-    
+
 def read_entities_file(path):
     """
     reads a file containing entity ids
@@ -43,12 +43,12 @@ def read_entities_file(path):
 
 def global_data_append_entity(eid):
     global_data.append(Entity(eid))
-    
+
 def global_data_append_instance(entity_target_class_tuple):
     entity = entity_target_class_tuple[0]
     target_class = entity_target_class_tuple[1]
     global_data.append(Instance(entity, target_class))
-        
+
 def get_entity_objects(entities, threads = 1):
     global global_data
     global_data = manager.list([])
@@ -59,7 +59,7 @@ def get_entity_objects(entities, threads = 1):
 
 
 
-    
+
 def get_instances_from_entities(entities, target_class, threads = 1):
     global global_data
     global_data= manager.list([])
@@ -70,7 +70,7 @@ def get_instances_from_entities(entities, target_class, threads = 1):
     return global_data[:]
     #return map( lambda entity: Instance(entity, target_class), entities )
 
-        
+
 
 
 def serialize_instances(instances, outfolder, chunk_size = 1000):
@@ -81,7 +81,7 @@ def serialize_instances(instances, outfolder, chunk_size = 1000):
         if len(subset)>0:
             logging.debug("Serializing part %d" %(i+1))
             pickle.dump(subset, open(os.path.join(outfolder, "instances%d.pickle" %(i+1)),'wb'), -1)
-        
+
 
 def load_instances(infolder):
     """
@@ -95,12 +95,12 @@ def load_instances(infolder):
                 instances += pickle.load(open(os.path.join(root, fname), 'rb'))
     logging.info("%d instances deserialized"%(len(instances)))
     return instances
-            
-    
+
+
 def main():
     parser = argparse.ArgumentParser(description='get pickeled instances')
     subparsers = parser.add_subparsers(dest='subparser_name' ,help='sub-command help')
-    
+
     parser_serialize = subparsers.add_parser('serialize', help='pickle instances')
     parser_serialize.add_argument('--data_folder', required=True, help='path to output pickled files')
     parser_serialize.add_argument('--threads', type=int, default = mp.cpu_count(), help='number of threads to run in parallel')
@@ -115,13 +115,13 @@ def main():
 
 
 
-    
+
     args = parser.parse_args()
     logging.info("pid: " + str(os.getpid()))
 
 
 
-        
+
     if args.subparser_name == "serialize":
         positive_entities = read_entities_file(args.positivefile)
         negative_entities = read_entities_file(args.negativefile)
@@ -129,7 +129,7 @@ def main():
         positive_instance = get_instances_from_entities(get_entity_objects(positive_entities, args.threads), 1, args.threads )
         negative_instance = get_instances_from_entities(get_entity_objects(negative_entities, args.threads), 0, args.threads )
         instances = positive_instance + negative_instance
-        
+
         logging.info("Creating pipe")
 
         feature_generators = [
@@ -140,7 +140,7 @@ def main():
         gen_geo_features.geo_feature_generator(force = True),
         #calais_feature_generator.CalaisFeatureGenerator(force=True)
         ]
-        
+
 
 
     elif args.subparser_name == "add":
@@ -167,6 +167,6 @@ def main():
     logging.info("Start Serializing")
     serialize_instances(pipe.instances, args.data_folder)
     logging.info("Done!")
-        
+
 if __name__=="__main__":
     main()
