@@ -118,3 +118,13 @@ create table matching_labels
     entity_id integer,
     match boolean default False
 );
+
+create table row_matching_labels
+(
+  earmark_id integer,
+  document_id integer,
+  entity_id integer,
+  jaccard float,
+  label boolean default False,
+  year integer
+);
