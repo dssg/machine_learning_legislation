@@ -124,7 +124,7 @@ create table row_matching_labels
   earmark_id integer,
   document_id integer,
   entity_id integer,
-  jacard float,
+  jaccard float,
   label boolean default False,
   year integer
 );
