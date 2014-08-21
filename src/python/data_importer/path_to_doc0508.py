@@ -1,16 +1,17 @@
 import csv,time, re, os, ast, sys,inspect
 sys.path.insert(0, os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],".."))))
 from util import path_tools as pt
+from util import configuration
 import psycopg2
 from datetime import datetime, date
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
 def path_to_docid05(earmark_path):
-    """                                                                                                    
+    """
     Input: list of lists of extracted earmark info                                                        \
     Ouput: list of lists containing relevant document id                                                  \
-                                                                                                           
+
     """
     bill_path = pt.BillPathUtils()
     report_path = pt.ReportPathUtils()
@@ -21,14 +22,14 @@ def path_to_docid05(earmark_path):
 
     if bill_report == 'bill':
         if chamber == 'senate':
-            path =  '/mnt/data/sunlight/bills/'+str(congress)+'/bills/s/'+str(number)
+            path =  os.path.join(configuration.get_path_to_bills(), str(congress), '/bills/s/', str(number))
         else:
-            path = '/mnt/data/sunlight/bills/'+str(congress)+'/bills/hr/'+str(number)
+            path = os.path.join(configuration.get_path_to_bills(), str(congress), '/bills/hr/', str(number))
 
         all_versions = bill_path.get_all_versions(path)
         best_date = date(1900,1,1)
         for version in all_versions:
-            npth =  path + '/text-versions/' + version 
+            npth =  path + '/text-versions/' + version
             bill_date = pt.BillPathUtils(npth).bill_date()
             bill_date = datetime.strptime(bill_date,"%Y-%m-%d").date()
             if bill_date > best_date:
@@ -38,9 +39,9 @@ def path_to_docid05(earmark_path):
         doc_id = pt.BillPathUtils(PATH_BILL).get_db_document_id()
     else:
         if chamber == "senate":
-            path = "/mnt/data/sunlight/congress_reports/" + str(congress) +"/senate/" + str(number)
+            path = os.path.join(configuration.get_path_to_reports(), str(congress) , "/senate/", str(number))
         else:
-            path = "/mnt/data/sunlight/congress_reports/" + str(congress)+"/house/"+ str(number)
+            path = os.path.join(configuration.get_path_to_reports(), str(congress), "/house/", str(number))
 
         all_versions = report_path.get_all_versions(path)
         rep_path = report_path.get_report_path(int(congress),chamber,int(number),all_versions[0])
@@ -49,9 +50,9 @@ def path_to_docid05(earmark_path):
 
 
 def path_to_docid08(earmarks):
-    """                                                                                                    
-    Input: list of lists of extracted earmark info                                                         
-    Ouput: list of lists containing relevant document id                                                   
+    """
+    Input: list of lists of extracted earmark info
+    Ouput: list of lists containing relevant document id
     """
     bill_path = pt.BillPathUtils()
     report_path = pt.ReportPathUtils()
@@ -71,7 +72,7 @@ def path_to_docid08(earmarks):
             if isinstance(number,tuple):
                 doc_ref  = number[0]
                 document_name = number[1]
-                all_versions = bill_path.get_all_versions('/mnt/data/sunlight/bills/110/bills/hr/hr2764/')
+                all_versions = bill_path.get_all_versions(os.path.join(configuration.get_path_to_bills(), '110/bills/hr/hr2764/'))
                 if re.search('\Division\s\w',document_name):
                     doc_string = re.findall('\Division\s\w',document_name)[0].replace(" ","")
                     version_index = [div_type for div_type in all_versions if doc_string in i]
@@ -85,13 +86,13 @@ def path_to_docid08(earmarks):
 
             else:
                 if chamber == 'senate':
-                    pth = '/mnt/data/sunlight/bills/'+str(congress)+'/bills/s/'+str(number)
+                    pth = os.path.join(configuration.get_path_to_bills(), str(congress), '/bills/s/', str(number))
                 else:
-                    pth = '/mnt/data/sunlight/bills/'+str(congress)+'/bills/hr/'+str(number)
+                    pth = os.path.join(configuration.get_path_to_bills(), str(congress), '/bills/hr/', str(number))
                 all_versions = bill_path.get_all_versions(pth)
                 best_date = date(1900,1,1)
                 for version in all_versions:
-                    npth = pth + '/text-versions/' + version 
+                    npth = pth + '/text-versions/' + version
                     bill_date = pt.BillPathUtils(npth).bill_date()
                     bill_date = datetime.strptime(bill_date,"%Y-%m-%d").date()
                     if bill_date > best_date:
@@ -103,9 +104,9 @@ def path_to_docid08(earmarks):
                     database.append([earmark_id,74360,page,excerpt])
         elif bill=='report':
             if chamber == "senate":
-                pth = "/mnt/data/sunlight/congress_reports/" + str(congress) +"/senate/" + str(number)
+                pth = os.path.join(configuration.get_path_to_reports(), str(congress), "/senate/", str(number))
             else:
-                pth = "/mnt/data/sunlight/congress_reports/" + str(congress)+"/house/"+ str(number)
+                pth = os.path.join(configuration.get_path_to_reports(), str(congress), "/house/", str(number))
 
             all_versions = report_path.get_all_versions(pth)
             rep_path = report_path.get_report_path(int(congress),chamber,int(number),all_versions[0])
