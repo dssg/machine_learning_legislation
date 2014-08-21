@@ -22,7 +22,7 @@ import util
 import multiprocessing as mp
 from pprint import pprint
 
-CONN_STRING = util.configuartion.get_connection_string()
+CONN_STRING = util.configuration.get_connection_string()
 
 
 
@@ -91,7 +91,7 @@ class EarmarkDetector:
             cur.execute('insert into sponsors (candidate_earmark_id, sponsor) values (%s, %s)', (curr_id,sponsor ))
 
 
-        self.conn.commit()
+        #self.conn.commit()
 
 
     def label_doc(self, doc_path, congress, chamber, document_type, number):
@@ -157,13 +157,18 @@ class SponsorCoder:
     def __init__(self):
         self.sponsors = {i:set() for i in range(1, 114)}
 
-        for row in csv.reader(open("../../../data/senators.csv", 'r')):
+        absolute_path = os.path.dirname(os.path.abspath(__file__))
+        senator_path = os.path.join(absolute_path, "../../../data/senators.csv")
+
+        for row in csv.reader(open(senator_path, 'r')):
             congress = int(row[0])
             sen = re.split('[:;, ]', row[1])[0].title()
             if sen.isalpha():
                 self.sponsors[congress].add(sen)
 
-        for row in csv.reader(open("../../../data/representatives.csv", 'r')):
+
+        rep_path = os.path.join(absolute_path, "../../../data/senators.csv")
+        for row in csv.reader(open(rep_path, 'r')):
             congress = int(row[0])
             rep = re.split('[:;, ]', row[1])[0].title()
             if rep.isalpha():
@@ -244,12 +249,12 @@ def main():
 
     args = parser.parse_args()
 
-    bills2008 = os.path.join(util.configuartion.get_path_to_bills(), "/110/bills/hr/hr2764/text-versions/")
-    bills2009 = os.path.join(util.configuartion.get_path_to_bills(), "/111/bills/hr/hr1105/text-versions/")
+    bills2008 = os.path.join(util.configuration.get_path_to_bills(), "/110/bills/hr/hr2764/text-versions/")
+    bills2009 = os.path.join(util.configuration.get_path_to_bills(), "/111/bills/hr/hr1105/text-versions/")
 
     years = [ "111", "110","109", "108", "107", "106", "105", "104"]
 
-    reports_base=util.configuartion.get_path_to_reports()
+    reports_base=util.configuration.get_path_to_reports()
     folders = [os.path.join(reports_base, year) for year in years] + [bills2008, bills2009]
 
 
