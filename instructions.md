@@ -127,7 +127,7 @@ To generate a file of ids for  positive and negative examples, use the script
 To generate features and serialize training instances for the examples in the files
 generated above, run `src/python/classification/prepare_earmark_data.py`.
 
-Again, the `src/python/classification/diagnostics.py` script can be used with serialize the
+Again, the `src/python/classification/diagnostics.py` script can be used to serialize the
 classifier trained on the earmark instances. 
 
 
