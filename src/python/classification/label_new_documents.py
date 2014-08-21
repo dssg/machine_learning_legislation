@@ -114,7 +114,7 @@ class GeoCoder:
         self.state_names_dict = {}
         self.capitalized_state_names_dict = {}
 
-        for row in csv.reader(open("/mnt/data/sunlight/misc/states.csv")):
+        for row in csv.reader(open("../../../data/states.csv")):
             self.state_names_dict[row[0]] = row[1]
             self.capitalized_state_names_dict[row[0].upper()] = row[1]
 
@@ -124,7 +124,7 @@ class GeoCoder:
         self.cities = set()
         self.cities_upper = set()
 
-        for row in csv.reader(open("/home/ewulczyn/machine_learning_legislation/data/cities.csv")):
+        for row in csv.reader(open("../../../data/cities.csv")):
             self.cities_upper.add(row[1].upper())
             self.cities.add(row[1])
 
@@ -157,27 +157,18 @@ class SponsorCoder:
     def __init__(self):
         self.sponsors = {i:set() for i in range(1, 114)}
 
-        for row in csv.reader(open("/mnt/data/sunlight/misc/senators.csv", 'r')):
+        for row in csv.reader(open("../../../data/senators.csv", 'r')):
             congress = int(row[0])
-            if congress == 20:
-                print row
-                print row[5]
-                print row[6]
-            sen = re.split('[:;, ]', row[6])[0].title()
+            sen = re.split('[:;, ]', row[1])[0].title()
             if sen.isalpha():
                 self.sponsors[congress].add(sen)
 
-        for row in csv.reader(open("/mnt/data/sunlight/misc/representatives.csv", 'r')):
+        for row in csv.reader(open("../../../data/representatives.csv", 'r')):
             congress = int(row[0])
-            if congress == 20:
-                print row
-                print row[5]
-                print row[6]
-            rep = re.split('[:;, ]', row[5])[0].title()
+            rep = re.split('[:;, ]', row[1])[0].title()
             if rep.isalpha():
                 self.sponsors[congress].add(rep)
 
-        #pprint(self.sponsors)
 
 
 
@@ -250,14 +241,15 @@ def main():
     parser = argparse.ArgumentParser(description='Match entities to OMB')
     parser.add_argument('--model', required = False, help='path to pickeld matching model')
     parser.add_argument('--data', required = False, help='path to pickeld instances')
-    #parser.add_argument('--path', required = False)
 
     args = parser.parse_args()
 
-    bills2008 = "/mnt/data/sunlight/bills/110/bills/hr/hr2764/text-versions/"
-    bills2009 = "/mnt/data/sunlight/bills/111/bills/hr/hr1105/text-versions/"
+    bills2008 = os.path.join(util.configuartion.get_path_to_bills(), "/110/bills/hr/hr2764/text-versions/")
+    bills2009 = os.path.join(util.configuartion.get_path_to_bills(), "/111/bills/hr/hr1105/text-versions/")
+
     years = [ "111", "110","109", "108", "107", "106", "105", "104"]
-    reports_base="/mnt/data/sunlight/congress_reports/"
+
+    reports_base=util.configuartion.get_path_to_reports()
     folders = [os.path.join(reports_base, year) for year in years] + [bills2008, bills2009]
 
 

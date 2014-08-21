@@ -61,7 +61,7 @@ def politicians_names():
     Output: tuple of lists of names 
     """
     
-    names = list(csv.reader(open('/mnt/data/sunlight/misc/legislators.csv','rU')))
+    names = list(csv.reader(open('../../../../data/legislators.csv','rU')))
     last_name = set([name[0] for name in names])
     first_name = set([name[1] for name in names])
     first_name_upper = set([name[0].upper() for name in names])

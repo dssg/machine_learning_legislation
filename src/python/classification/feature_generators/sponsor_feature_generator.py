@@ -13,7 +13,7 @@ class SponsorFeatureGenerator:
         self.force = kwargs.get("force", True)
         self.feature_prefix = "SPONOSR_FEAUTURE_"
         self.sponsors = set()
-        for row in csv.reader(open("/mnt/data/sunlight/misc/legislators.csv", 'rU')):
+        for row in csv.reader(open("../../../../data/legislators.csv", 'rU')):
             self.sponsors.add(row[0])
         self.sponsors = self.sponsors.difference(set(['Law', 'Page', 'New', 'Fort', 'Camp', 'Field']))
 
