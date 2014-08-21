@@ -1,3 +1,6 @@
+import os, sys, inspect
+sys.path.insert(0, os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],".."))))
+from util import configuration
 import re,sys,csv,codecs
 import math
 import solr,psycopg2
@@ -8,7 +11,7 @@ def idf(entity_count):
 
 
 solr_connection = solr.SolrConnection('http://54.184.78.244:8983/solr/solr')
-CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
+CONN_STRING = configuration.get_connection_string()
 conn = psycopg2.connect(CONN_STRING)
 cur = conn.cursor()
 cur.execute("select  count(distinct id) from documents")

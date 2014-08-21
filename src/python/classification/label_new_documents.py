@@ -22,7 +22,7 @@ import util
 import multiprocessing as mp
 from pprint import pprint
 
-CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
+CONN_STRING = util.configuartion.get_connection_string()
 
 
 
@@ -59,7 +59,7 @@ class EarmarkDetector:
         instance = self.get_instance_from_row(row, column_indices)
         X, y, space = pipe.instances_to_matrix([instance,], feature_space = self.feature_space, dense = False)
         scores = self.model.decision_function(X)
-        fields = ['congress', 'chamber','document_type','number', 'row', 'row_offset', 'row_length', 'score', 'state', 'sponsors'] 
+        fields = ['congress', 'chamber','document_type','number', 'row', 'row_offset', 'row_length', 'score', 'state', 'sponsors']
         cmd = "insert into candidate_earmarks (" + ", ".join(fields) + ") values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) returning id"
         attributes = instance.attributes
         state = self.geo_coder.get_state(attributes['entity_text'])
@@ -106,7 +106,7 @@ class EarmarkDetector:
                 self.label_row(row, column_indices, table_offset, congress, chamber, document_type, number, sponsor_indices)
 
 
-    
+
 
 class GeoCoder:
     def __init__(self):
@@ -217,7 +217,7 @@ class SponsorCoder:
             return 1
         else:
             return 0
-            
+
 
 
 
@@ -256,10 +256,10 @@ def main():
 
     bills2008 = "/mnt/data/sunlight/bills/110/bills/hr/hr2764/text-versions/"
     bills2009 = "/mnt/data/sunlight/bills/111/bills/hr/hr1105/text-versions/"
-    years = [ "111", "110","109", "108", "107", "106", "105", "104"] 
+    years = [ "111", "110","109", "108", "107", "106", "105", "104"]
     reports_base="/mnt/data/sunlight/congress_reports/"
     folders = [os.path.join(reports_base, year) for year in years] + [bills2008, bills2009]
-    
+
 
     conn = psycopg2.connect(CONN_STRING)
 

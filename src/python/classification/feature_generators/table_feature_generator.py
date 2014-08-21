@@ -1,13 +1,14 @@
 import os, sys, inspect
 sys.path.insert(0, os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],".."))))
 sys.path.insert(0, os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],"../.."))))
+from util import configuration
 from classification.feature import Feature
 import logging
 import psycopg2
 import util.text_table_tools as ttt
 from StringIO import StringIO
 
-CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
+CONN_STRING = configuration.get_connection_string()
 
 class table_feature_generator:
     """
@@ -57,7 +58,7 @@ class table_header_feature_generator:
         if headers:
             for header in headers:
                 feature_name = self.feature_prefix + header
-                instance.feature_groups[self.name][feature_name] = Feature(feature_name, 1) 
+                instance.feature_groups[self.name][feature_name] = Feature(feature_name, 1)
         else:
             instance.feature_groups[self.name][self.no_header_feature] = Feature(self.no_header_feature, 1)
         logging.debug( "Feature count for entity id: %d after %s" %(instance.attributes["id"], self.name))

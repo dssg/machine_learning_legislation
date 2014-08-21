@@ -1,11 +1,12 @@
 import os, sys, inspect
 sys.path.insert(0, os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],".."))))
+from util import configuration
 import argparse
 import psycopg2
 from  earmarks_to_docid0910 import *
 
 def import_rows(rows):
-    CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
+    CONN_STRING = configuration.get_connection_string()
     earmarks = []
     for row in rows:
         new_earmark = []
@@ -21,7 +22,7 @@ def import_rows(rows):
                 except:
                     new_earmark.append(item)
         earmarks.append(new_earmark)
-  
+
     conn = psycopg2.connect(CONN_STRING)
     cmd = "insert into earmark_documents (earmark_id, document_id, page_number, excerpt) values (%s, %s, %s, %s)"
     params = rows

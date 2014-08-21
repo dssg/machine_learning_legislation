@@ -5,12 +5,13 @@ in those documents, and populate the tables table
 import sys, os, inspect
 sys.path.insert(0, os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],".."))))
 import util.text_table_tools as ttt
+from util import configuration
 import psycopg2
 from util.path_tools import BillPathUtils, ReportPathUtils
 import codecs
 import argparse
 
-CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
+CONN_STRING = configuration.get_connection_string()
 conn = psycopg2.connect(CONN_STRING)
 
 def main():
