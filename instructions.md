@@ -14,7 +14,7 @@ classifier.
 - nose
 - pandas
 
-### Getting Data ###
+### Getting the Raw Data ###
 
 Our data source includes plain text formats for congressional bills and
 congressional reports.
@@ -35,9 +35,9 @@ Congressional reports can be downloaded using the script found at
 The Office of Management and Budget collected data on earmarks for the years
 2005, 2008, 2009, and 2010. We use this data to create positive examples for our
 earmark classifier. CSV versions of this data can be downloaded at [the OMB
-website](http://earmarks.omb.gov/earmarks-public/).
+website](http://earmarks.omb.gov/earmarks-public/). TODO: this could be a script
 
-### Importing the Data ###
+### Creating a Database ###
 
 To create the databases, run the SQL script located at
 `conf/create_db_tables.sql`.
