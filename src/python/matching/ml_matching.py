@@ -31,15 +31,15 @@ from classification.pipe import Pipe
 from classification.blocks_pipe import BlocksPipe
 from classification.instances_grouper import InstancesGrouper
 
+from  util import configuration
+CONN_STRING =  configuration.get_connection_string()
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
  
 
 
 MIN = 0.1
  
-
-
-CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
 
 def get_doc_ids_from_db(year):
 

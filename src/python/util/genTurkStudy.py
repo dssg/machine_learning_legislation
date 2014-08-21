@@ -8,7 +8,9 @@ import csv
 from path_tools import BillPathUtils
 from sunlight_id_to_path import sunlightid_to_path
 
-CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
+import configuration
+CONN_STRING =  configuration.get_connection_string()
+
 conn = psycopg2.connect(CONN_STRING)
 cmd = "select distinct bill_id from  old_billentities where entity_type = 'Currency'"
 cur = conn.cursor()

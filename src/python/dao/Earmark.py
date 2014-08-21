@@ -5,7 +5,9 @@ import psycopg2
 import psycopg2.extras
 import logging
 
-CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
+from  util import configuration
+CONN_STRING =  configuration.get_connection_string()
+
 
 class Earmark:
     def __init__(self, earmark_id):

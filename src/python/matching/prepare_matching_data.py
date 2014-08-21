@@ -5,8 +5,8 @@ import argparse
 import os
 import psycopg2
 import psycopg2.extras
-CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
-import multiprocessing as mp
+from  util import configuration
+CONN_STRING =  configuration.get_connection_string()import multiprocessing as mp
 import string
 import re
 

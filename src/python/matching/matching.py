@@ -20,6 +20,9 @@ from nltk.tokenize.punkt import PunktWordTokenizer
 from nltk.tokenize import WhitespaceTokenizer
 import multiprocessing as mp
 
+from  util import configuration
+CONN_STRING =  configuration.get_connection_string()
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
  
 
@@ -66,7 +69,6 @@ def shinglize(s, n):
 
 earmarks_blacklist = set([normalize(line.strip()) for line in open('/mnt/data/sunlight/misc/entities_blacklist.txt').readlines()])
 
-CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
 
 
 def get_earmark(earmark_id):

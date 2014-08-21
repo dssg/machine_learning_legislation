@@ -3,13 +3,15 @@ import json
 import traceback
 import codecs
 
+import configuration
+
 
 class BillPathUtils:
     
     def __init__(self, path="", rootDir="/mnt/data/sunlight/bills/"):
         self.path = path
         self.rootDir = rootDir
-        self.CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
+        self.CONN_STRING = configuration.get_connection_string()
         if not self.rootDir.endswith('/'):
             self.rootDir += '/'
             
@@ -105,7 +107,7 @@ class ReportPathUtils():
     def __init__(self, path="", rootDir="/mnt/data/sunlight/congress_reports/"):
         self.path = path
         self.rootDir = rootDir
-        self.CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
+        self.CONN_STRING = configuration.get_connection_string()
         if not self.rootDir.endswith('/'):
             self.rootDir += '/'
         self.pathParts = self.path[len(self.rootDir):].split('/')

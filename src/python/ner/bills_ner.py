@@ -11,8 +11,9 @@ API_KEYS = ["wdbkpbpsksskkbm2rpqfm4xa", "mt5qu3e4jdrd6jpc9r9ecama",
 "k9fb7rfh7hpbfp238whuggrr","55rared7un2pnjr23kjtctes"]
 MAX_TEXT_LENGTH = 100000
 calaises = [Calais(key, submitter="python-calais-demo") for key in API_KEYS]
-CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
 
+from  util import configuration
+CONN_STRING =  configuration.get_connection_string()
 
 
 class Entity:

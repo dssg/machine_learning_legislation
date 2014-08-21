@@ -7,7 +7,8 @@ import random
 import psycopg2
 import logging
 
-
+import configuration
+CONN_STRING =  configuration.get_connection_string()
 
 
 
@@ -87,7 +88,6 @@ def main():
     bills2009 = "/mnt/data/sunlight/bills/111/bills/hr/hr1105/text-versions/"
 
 
-    CONN_STRING = "dbname=harrislight user=harrislight password=harrislight host=dssgsummer2014postgres.c5faqozfo86k.us-west-2.rds.amazonaws.com"
     conn = psycopg2.connect(CONN_STRING)
 
     insert_all(bills2008, conn);
