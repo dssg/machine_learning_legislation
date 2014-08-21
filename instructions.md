@@ -14,6 +14,16 @@ classifier.
 - nose
 - pandas
 
+### Configuration ###
+
+Create a file `earmarks.cfg` within the `conf` directory. This should be based
+on the `earmarks.cfg.example` file in the directory. You need to set two values
+here.
+
+- **conn**: this is the connection string to your Postgres database
+- **data** this is a file system path which will serve as the root directory
+  where data such as downloaded congressional bills will be located.
+
 ### Getting the Raw Data ###
 
 Our data source includes plain text formats for congressional bills and
@@ -34,8 +44,10 @@ Congressional reports can be downloaded using the script found at
 
 The Office of Management and Budget collected data on earmarks for the years
 2005, 2008, 2009, and 2010. We use this data to create positive examples for our
-earmark classifier. CSV versions of this data can be downloaded at [the OMB
-website](http://earmarks.omb.gov/earmarks-public/). TODO: this could be a script
+earmark classifier. You can download this data using the script
+`src/python/data_importer/get_omb_data.py`. This will download the CSV files and
+place them in an OMB folder within the data folder set in your configuration
+file.
 
 
 ### Creating a Database ###
@@ -128,7 +140,7 @@ To generate features and serialize training instances for the examples in the fi
 generated above, run `src/python/classification/prepare_earmark_data.py`.
 
 Again, the `src/python/classification/diagnostics.py` script can be used to serialize the
-classifier trained on the earmark instances. 
+classifier trained on the earmark instances.
 
 
 With this serialized model, you can generate a database table of earmarks for congresses the
