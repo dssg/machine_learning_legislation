@@ -39,31 +39,37 @@ website](http://earmarks.omb.gov/earmarks-public/). TODO: this could be a script
 
 ### Creating a Database ###
 
-To create the databases, run the SQL script located at
+To create the database tables, run the SQL script located at
 `conf/create_db_tables.sql`.
 
 #### Bills ####
 
 To import bill data to the database, use the script
-`src/python/data_importer/import_bills_to_db` passing it the `bills` argument
+`src/python/data_importer/import_documents_to_db` passing it the `bills` argument
 and the path to the bills.
 
-Example: `python import_bills_to_db.py --bills --path
+Example: `python import_documents_to_db.py --bills --path
 /mnt/data/sunlight/bills/110/bills/`
 
 #### Reports ####
 
 To import report data to the database, use the script
-`src/python/data_importer/import_bills_to_db` passing it the `reports` argument
+`src/python/data_importer/import_documents_to_db` passing it the `reports` argument
 and the path to the reports.
 
-Example: `python import_bills_to_db.py --reports --path
+Example: `python import_documents_to_db.py --reports --path
 /mnt/data/sunlight/congress_reports/111/`
 
-#### OMB Data ####
 
-To import OMB data to the database, use the script
-`src/python/data_import/import_omb_csv.py` passing it the path to the OMB csv
+## OMB Earmarks ###
+
+To import the table of OMB earmarks, use the script
+`src/python/data_importer/load_earmarks_table.py`
+
+#### Mapping From OMB Earmarks to Documents ####
+
+To get a table for the mapping between earmarks and documents, use the script
+`src/python/data_importer/import_omb_csv.py` passing it the path to the OMB csv
 file and the year of the file.
 
 Example: `python import_omb_csv.py --path
