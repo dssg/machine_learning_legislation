@@ -83,9 +83,9 @@ def get_entities(path, conn):
 def main():
     years = [ "111", "110","109", "108"] 
 
-    reports_base="/mnt/data/sunlight/congress_reports/"
-    bills2008 = "/mnt/data/sunlight/bills/110/bills/hr/hr2764/text-versions/"
-    bills2009 = "/mnt/data/sunlight/bills/111/bills/hr/hr1105/text-versions/"
+    reports_base=configuartion.get_path_to_reports()
+    bills2008 = os.path.join(configuartion.get_path_to_bills(), "/110/bills/hr/hr2764/text-versions/")
+    bills2009 = os.path.join(configuartion.get_path_to_bills(), "/111/bills/hr/hr1105/text-versions/")
 
 
     conn = psycopg2.connect(CONN_STRING)

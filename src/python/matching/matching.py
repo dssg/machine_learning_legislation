@@ -67,9 +67,6 @@ def shinglize(s, n):
     return shingles
 
 
-earmarks_blacklist = set([normalize(line.strip()) for line in open('/mnt/data/sunlight/misc/entities_blacklist.txt').readlines()])
-
-
 
 def get_earmark(earmark_id):
     conn = psycopg2.connect(CONN_STRING)
@@ -217,9 +214,7 @@ def process_earmark(earmark_update_pair):
         for doc_entity in doc_entities:
             #normalized_entity_text = normalize(doc_entity['entity_text'])
             normalized_entity_inferred_name = normalize(doc_entity['entity_inferred_name'])
-            #if normalized_entity_text in earmarks_blacklist or \
-            if normalized_entity_inferred_name in earmarks_blacklist:
-                continue
+            
             #e_text_shingles = shinglize(normalized_entity_text, 2)
             e_name_shingles = shinglize(normalized_entity_inferred_name, 2)
             

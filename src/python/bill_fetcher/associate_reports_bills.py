@@ -1,11 +1,13 @@
-import os
+import os, path, sys
+sys.path.insert(0, os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],".."))))
+from util import configuration
 import psycopg2
 import re
 from bs4 import BeautifulSoup
 from datetime import datetime
 import json
 
-root_dir = "/mnt/data/sunlight/congress_reports/"
+root_dir = configuration.get_path_to_reports()
 reports_bills_file = open("reports_bills.csv", "w")
 
 # loop through each folder
@@ -39,7 +41,7 @@ def get_bill_directory(bill_name, congress_number):
         return ""
 
     bill_dir = ""
-    root_bill_dir = "/mnt/data/sunlight/bills/"
+    root_bill_dir = configuration.get_path_to_bills()
     bill_dir = os.path.join(root_bill_dir, congress_number)
     bill_dir = os.path.join(bill_dir, "bills")
     bill_dir = os.path.join(bill_dir, get_bill_type_dir(bill_name))

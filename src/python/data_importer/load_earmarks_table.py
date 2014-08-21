@@ -1,6 +1,10 @@
 import os, sys, inspect
 sys.path.insert(0, os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],".."))))
-from util import path_tools, configurationimport psycopg2
+from util import path_tools, configuration
+import psycopg2
+CONN_STRING = configuration.get_connection_string()
+
+import psycopg2
 import csv
 import numpy as np
 import pandas as pd
@@ -22,7 +26,7 @@ keep = [
         'bureau_title',
         'account_title',
         'program',
-        'enacted_year', 
+        'enacted_year',
         'short_description',
         'earmark_description',
         'earmark_type_name',
@@ -34,9 +38,9 @@ keepset = set(keep)
 
 ds = []
 for year in years:
-    fname = '/mnt/data/sunlight/OMB/'+year+'.csv'
+    fname = configuration.get_path_to_omb_data() +year+'.csv'
     d = pd.read_csv(fname, low_memory=False)
-    d.columns = [h.lower().replace(" ", "_") for h in d.columns]    
+    d.columns = [h.lower().replace(" ", "_") for h in d.columns]
     if year == '2005':
         d['earmark_id'] = range(d.shape[0])
         d['short_description'] = d['earmark_short_description']
@@ -53,7 +57,7 @@ new_index = [
         'bureau',
         'account',
         'program',
-        'enacted_year', 
+        'enacted_year',
         'short_description',
         'full_description',
         'earmark_type',
@@ -66,7 +70,7 @@ new_index = [
 
 
 
-          
+
 ear.columns =  new_index
 
 
@@ -84,11 +88,11 @@ def get_recipient(df):
             most_complete_num = complete_num
 
 
-    if row["recipient"] is np.NaN: 
+    if row["recipient"] is np.NaN:
         print "recipient not found"
-    
+
     return df.ix[most_complete_idx]
-    
+
 
 ear = ear.groupby('earmark_id').apply(get_recipient)
 
@@ -98,7 +102,7 @@ def shorten_full_description(str):
         return str[0:2045]
     except:
         return str
-    
+
 ear['full_description'] = ear.full_description.map(shorten_full_description)
 
 
@@ -108,14 +112,14 @@ def convert(x):
        return x.astype(int)
     except:
         return x
-    
-ear.apply(convert).to_csv('/mnt/data/sunlight/OMB/all.csv', header=True, index=False)
+
+ear.apply(convert).to_csv(os.path.join(configuration.get_path_to_omb_data(), 'all.csv'), header=True, index=False)
 
 
 
 
 
-with open('/mnt/data/sunlight/OMB/all.csv', 'rb') as f:
+with open(os.path.join(configuration.get_path_to_omb_data(), 'all.csv', 'rb') as f:
 	reader = csv.reader(f)
 	reader.next()
 	rows = []
