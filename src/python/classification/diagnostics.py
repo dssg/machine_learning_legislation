@@ -153,9 +153,9 @@ def do_grid_search(X, y, folds, clf, param_grid, scoring, X_test = None, y_test 
 
 
 def save_model(X, y, feature_space, folds, clf, param_grid, scoring, outfile):
-    #model = get_optimal_model (X, y, folds, clf, param_grid, scoring)
-    clf = svm.LinearSVC(C = 0.01)
-    model = clf.fit(X,y)
+    model = get_optimal_model (X, y, folds, clf, param_grid, scoring)
+    #clf = svm.LinearSVC(C = 0.01)
+    #model = clf.fit(X,y)
     joblib.dump(model, outfile, compress=9)
     pickle.dump(feature_space, open(outfile+'.feature_space','wb'))
 
@@ -237,10 +237,15 @@ def do_feature_set_analysis(train_instances, test_instances, folds, clf, param_g
 
     groups = set(train_instances[0].feature_groups.keys()).intersection(test_instances[0].feature_groups.keys())
 
+    print groups
     X_train, y_train, feature_space = pipe.instances_to_matrix(train_instances, dense = dense, groups = groups)
     X_test, y_test = test_instances_to_matrix(feature_space, test_instances, dense = dense)
     model = get_optimal_model(X_train, y_train, folds, clf, param_grid, 'roc_auc')
+    y_pred = model.predict(X_test)
     scores =  get_scores(model, X_test) 
+    print("Test ROC: %f" % roc_auc_score( y_test, scores))
+    print(classification_report(y_test, y_pred))
+
     fpr, tpr, thresholds = roc_curve(y_test, scores)
     np.set_printoptions(threshold='nan')
 
@@ -261,7 +266,10 @@ def do_feature_set_analysis(train_instances, test_instances, folds, clf, param_g
         X_test, y_test = test_instances_to_matrix(feature_space, test_instances, dense = dense)
 
         model = get_optimal_model(X_train, y_train,  folds, clf, param_grid, 'roc_auc')
+        y_pred = model.predict(X_test)
         scores = get_scores(model, X_test)
+        print("Test ROC: %f" % roc_auc_score( y_test, scores))
+        print(classification_report(y_test, y_pred))
         fpr, tpr, thresholds = roc_curve(y_test, scores)
         roc_auc = auc(fpr, tpr)
         plt.plot(fpr, tpr, lw=1, label='%s  (area = %0.4f)' % (g.split("_")[0], roc_auc))

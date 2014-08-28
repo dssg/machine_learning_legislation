@@ -138,6 +138,8 @@ def main():
         #entity_text_bag_feature_generator.bigram_feature_generator(force=True),
         simple_entity_text_feature_generator.simple_entity_text_feature_generator(force=True),
         gen_geo_features.geo_feature_generator(force = True),
+        sponsor_feature_generator.SponsorFeatureGenerator(force = True),
+
         #calais_feature_generator.CalaisFeatureGenerator(force=True)
         ]
 

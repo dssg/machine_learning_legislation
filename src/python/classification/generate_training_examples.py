@@ -102,6 +102,44 @@ def get_candidate_negative_examples_from_db( year, count ):
     finally:
         conn.close()
 
+
+
+
+
+def get_candidate_negative_examples_from_docs_with_earmarks( year, count, outfile ):
+    """
+    generates negative examples, randomly, for a given year
+    """
+    conn = psycopg2.connect(CONN_STRING)
+    try:
+        cmd = """
+        select mid, entity_inferred_name, random() as r
+        from
+        (select e.entity_inferred_name, max(e.id) as mid
+        from entities as e , documents
+        where e.document_id = documents.id
+        and e.entity_type = 'table_row'
+        and EXTRACT(YEAR FROM documents.date) = %s
+        and not exists (select matched_entity_id from earmark_document_matched_entities where e.id = matched_entity_id)
+        and e.document_id in (select document_id from earmark_documents)
+        group by e.entity_inferred_name
+        ) as vu
+        order by r limit %s
+        """
+        #and not exists (select entity_inferred_name from entities, earmark_document_matched_entities where earmark_document_matched_entities.matched_entity_id = entities.id and e.entity_inferred_name = entities.entity_inferred_name and entities.source = 'table' )
+        cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        cur.execute(cmd, (year, count))
+        records = cur.fetchall()
+        conn.close()
+    except Exception as ex:
+        logging.exception("failed to get negative examples")
+    finally:
+        conn.close()
+
+    entity_ids = [entity["mid"] for entity in records]
+    write_entity_ids_to_file(entity_ids, outfile)
+
+
 def get_uniqe_table_entities():
     """
     gets a list of unique entities from the database
@@ -150,6 +188,13 @@ if __name__=="__main__":
     parser_negative.add_argument('--count', type = int, default=1000000, help='number of negative examples')
     parser_negative.add_argument('--outfile',  required=True, help='the file to which to write results')
 
+
+    parser_negative2 = subparsers.add_parser('negative_from_earmark_docs', help='create negative examples')
+    parser_negative2.add_argument('--year', type = int, required=True, help='year. Note that the script decrements 1')
+    parser_negative2.add_argument('--count', type = int, default=1000000, help='number of negative examples')
+    parser_negative2.add_argument('--outfile',  required=True, help='the file to which to write results')
+
+
     parser_all_entities = subparsers.add_parser('alltable', help='gets all table entities')
     parser_all_entities.add_argument('--outfile',  required=True, help='the file to which to write results')
 
@@ -164,6 +209,8 @@ if __name__=="__main__":
         get_positive_eamples(args.year, args.outfile)
     elif args.subparser_name =="negative":
         get_negative_examples(args.year, args.count, args.outfile)
+    elif args.subparser_name =="negative_from_earmark_docs":
+        get_candidate_negative_examples_from_docs_with_earmarks( args.year, args.count, args.outfile)
     elif args.subparser_name =="google":
         entity_ids = [int(line.strip()) for line in open(args.file).readlines() if len(line) > 1 ]
         match_entities_to_google(entity_ids)

@@ -91,7 +91,7 @@ class EarmarkDetector:
             cur.execute('insert into sponsors (candidate_earmark_id, sponsor) values (%s, %s)', (curr_id,sponsor ))
 
 
-        #self.conn.commit()
+        self.conn.commit()
 
 
     def label_doc(self, doc_path, congress, chamber, document_type, number):
@@ -213,9 +213,6 @@ class SponsorCoder:
             return 1
         else:
             return 0
-
-
-
 
 
 def label_all(t):

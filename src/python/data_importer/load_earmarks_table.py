@@ -8,71 +8,63 @@ import psycopg2
 import csv
 import numpy as np
 import pandas as pd
-
-
 from util import path_tools, configuration
-
 CONN_STRING = configuration.get_connection_string()
 
 
+def get_clean_csv():
+    years = ['2010', '2009', '2008', '2005']
 
+    keep = [
+            'earmark_id',
+            'earmark_code',
+            'agency_title',
+            'bureau_title',
+            'account_title',
+            'program',
+            'enacted_year',
+            'short_description',
+            'earmark_description',
+            'earmark_type_name',
+            'spendcom',
+            'recipient'
+            ]
 
-years = ['2010', '2009', '2008', '2005']
+    keepset = set(keep)
 
-keep = [
-        'earmark_id',
-        'earmark_code',
-        'agency_title',
-        'bureau_title',
-        'account_title',
-        'program',
-        'enacted_year',
-        'short_description',
-        'earmark_description',
-        'earmark_type_name',
-        'spendcom',
-        'recipient'
-        ]
+    ds = []
+    for year in years:
+        fname = configuration.get_path_to_omb_data() +year+'.csv'
+        d = pd.read_csv(fname, low_memory=False)
+        d.columns = [h.lower().replace(" ", "_") for h in d.columns]
+        if year == '2005':
+            d['earmark_id'] = range(d.shape[0])
+            d['short_description'] = d['earmark_short_description']
+        ds.append(d)
 
-keepset = set(keep)
+    d = pd.concat(ds)
 
-ds = []
-for year in years:
-    fname = configuration.get_path_to_omb_data() +year+'.csv'
-    d = pd.read_csv(fname, low_memory=False)
-    d.columns = [h.lower().replace(" ", "_") for h in d.columns]
-    if year == '2005':
-        d['earmark_id'] = range(d.shape[0])
-        d['short_description'] = d['earmark_short_description']
-    ds.append(d)
+    ear = pd.concat(ds)[keep]
 
-d = pd.concat(ds)
+    new_index = [
+            'earmark_id',
+            'earmark_code',
+            'agency',
+            'bureau',
+            'account',
+            'program',
+            'enacted_year',
+            'short_description',
+            'full_description',
+            'earmark_type',
+            'spendcom',
+            'recipient'
+            ]
 
-ear = pd.concat(ds)[keep]
-
-new_index = [
-        'earmark_id',
-        'earmark_code',
-        'agency',
-        'bureau',
-        'account',
-        'program',
-        'enacted_year',
-        'short_description',
-        'full_description',
-        'earmark_type',
-        'spendcom',
-        'recipient'
-        ]
-
-
-
-
-
-
-
-ear.columns =  new_index
-
+    ear.columns =  new_index
+    ear = ear.groupby('earmark_id').apply(get_recipient)
+    ear['full_description'] = ear.full_description.map(shorten_full_description)
+    ear.apply(convert).to_csv(os.path.join(configuration.get_path_to_omb_data(), 'all.csv'), header=True, index=False)
 
 
 
@@ -94,17 +86,11 @@ def get_recipient(df):
     return df.ix[most_complete_idx]
 
 
-ear = ear.groupby('earmark_id').apply(get_recipient)
-
-
 def shorten_full_description(str):
     try:
         return str[0:2045]
     except:
         return str
-
-ear['full_description'] = ear.full_description.map(shorten_full_description)
-
 
 
 def convert(x):
@@ -113,30 +99,33 @@ def convert(x):
     except:
         return x
 
-ear.apply(convert).to_csv(os.path.join(configuration.get_path_to_omb_data(), 'all.csv'), header=True, index=False)
+
+def import_to_db():
+
+    with open(os.path.join(configuration.get_path_to_omb_data(), 'all.csv', 'rb')) as f:
+        reader = csv.reader(f)
+        reader.next()
+        rows = []
+        for row in reader:
+            rows.append(row)
+
+        print len(rows)
+
+    conn = psycopg2.connect(CONN_STRING)
+    cmd = "insert into earmarks ("+", ".join(new_index)+") values ("+", ".join(["%s"]*len(new_index))+")"
+    print cmd
+    params = rows
+    cur = conn.cursor()
+    cur.execute ("delete from earmarks")
+    cur.executemany(cmd, params)
+    #conn.commit()
+    conn.close()
 
 
 
-
-
-with open(os.path.join(configuration.get_path_to_omb_data(), 'all.csv', 'rb') as f:
-	reader = csv.reader(f)
-	reader.next()
-	rows = []
-	for row in reader:
-		rows.append(row)
-
-	print len(rows)
-
-conn = psycopg2.connect(CONN_STRING)
-cmd = "insert into earmarks ("+", ".join(new_index)+") values ("+", ".join(["%s"]*len(new_index))+")"
-print cmd
-params = rows
-cur = conn.cursor()
-cur.execute ("delete from earmarks")
-cur.executemany(cmd, params)
-conn.commit()
-conn.close()
+if __name__ == '__main__':
+    get_clean_csv()
+    import_to_db()
 
 
 
