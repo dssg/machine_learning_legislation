@@ -7,8 +7,11 @@ from bs4 import BeautifulSoup
 from datetime import datetime
 import json
 
+CONN_STRING = configuration.get_connection_string()
 root_dir = configuration.get_path_to_reports()
-reports_bills_file = open("reports_bills.csv", "w")
+reports_bills_dict = {}
+conn = psycopg2.connect(CONN_STRING)
+cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
 # loop through each folder
 def get_reports(path, congress):
@@ -33,8 +36,23 @@ def get_associated_bill(xml_file):
         bill_name = bill.text
     return bill_name
 
-def write_bill_association (report_id, bill_id):
-    reports_bills_file.write("%s,%s\n" % (report_id, bill_id))
+def write_bill_association (report_dir, bill_dir):
+    reports_bills_dict[bill_dir] = report_dir
+
+
+def write_to_db():
+    for bill_path, report_path in report_bills_dict.iteritems():
+        if len(report_path) and len(bill_path):
+            report_util = ReportPathUtils(path=report_path)
+            bill_util = BillPathUtils(path=bill_path)
+            report_id = report_util.get_db_document_id()
+            bill_id = bill_util.get_db_document_id()
+            if report_id and bill_id:
+                cmd = "INSERT INTO bill_reports (bill_id, report_id) VALUES (%s, %s)"
+                params = (bill_id, report_id)
+                cur.execute(cmd, params)
+                conn.commit()
+
 
 def get_bill_directory(bill_name, congress_number):
     if not bill_name:
