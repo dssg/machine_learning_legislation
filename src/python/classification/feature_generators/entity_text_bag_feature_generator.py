@@ -12,7 +12,8 @@ import scipy
 import string
 import re
 from classification.feature import Feature
-from matching.string_functions import normalize
+from matching.string_functions import normalize_no_lower, tokenize
+import csv
 
 
 
@@ -21,6 +22,48 @@ class unigram_feature_generator:
         self.name = "unigram_feature_generator"
         self.force = kwargs.get("force", True)
         self.feature_prefix = "UNIGRAM_"
+        self.forbidden = set()
+
+        absolute_path = os.path.dirname(os.path.abspath(__file__))
+        states_path = os.path.join(absolute_path, "../../../../data/states.csv")
+
+        r = csv.reader(open(states_path))
+        for row in r:
+            self.forbidden.add(row[0].upper())
+            self.forbidden.add(row[0])
+            self.forbidden.add(row[1])
+
+        cities_path = os.path.join(absolute_path, "../../../../data/cities.csv")
+
+
+        r = csv.reader(open(cities_path))
+        for row in r:
+            self.forbidden.add(row[1].upper())
+            self.forbidden.add(row[1])
+
+
+
+
+        absolute_path = os.path.dirname(os.path.abspath(__file__))
+        senator_path = os.path.join(absolute_path, "../../../../data/senators.csv")
+
+        for row in csv.reader(open(senator_path, 'r')):
+            congress = int(row[0])
+            if congress > 109:
+                sen = re.split('[:;, ]', row[1])[0].title()
+                if sen.isalpha():
+                    self.forbidden.add(sen)
+
+
+        rep_path = os.path.join(absolute_path, "../../../../data/representatives.csv")
+        for row in csv.reader(open(rep_path, 'r')):
+            congress = int(row[0])
+            if congress > 109:
+                rep = re.split('[:;, ]', row[1])[0].title()
+                if rep.isalpha():
+                    self.forbidden.add(rep)
+
+
             
     
 
@@ -32,12 +75,15 @@ class unigram_feature_generator:
             return
         instance.feature_groups[self.name] = {}
 
-        entity_text = normalize(instance.attributes["entity_inferred_name"])
-        tokens = entity_text.split(' ')
-        for token in tokens:
-            feature_name = self.feature_prefix +token
+        tokens = tokenize(normalize_no_lower(instance.attributes["entity_inferred_name"]))
 
-            instance.feature_groups[self.name][feature_name] = Feature(feature_name, 1) 
+        for token in tokens:
+            if token not in self.forbidden:
+                feature_name = self.feature_prefix +token.lower()
+                instance.feature_groups[self.name][feature_name] = Feature(feature_name, 1) 
+
+       
+
         logging.debug( "Feature count %d for entity id: %d after %s" %(instance.feature_count(),instance.attributes["id"], self.name))
 
 

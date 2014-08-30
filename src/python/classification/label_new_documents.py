@@ -167,7 +167,7 @@ class SponsorCoder:
                 self.sponsors[congress].add(sen)
 
 
-        rep_path = os.path.join(absolute_path, "../../../data/senators.csv")
+        rep_path = os.path.join(absolute_path, "../../../data/representatives.csv")
         for row in csv.reader(open(rep_path, 'r')):
             congress = int(row[0])
             rep = re.split('[:;, ]', row[1])[0].title()

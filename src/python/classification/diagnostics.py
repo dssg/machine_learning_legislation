@@ -418,7 +418,9 @@ def main():
 
         if args.alg == 'svm':
             clf = svm.LinearSVC(C = 0.01)
-            param_grid = {'C': [ 0.001, 0.01, 0.1, 0.5, 1, 4, 10, 100]}
+            #param_grid = {'C': [ 0.001, 0.01, 0.1, 0.5, 1, 4, 10, 100]}
+            param_grid = {'C': [ 0.01, 0.1]}
+
             dense = False
 
         else:
@@ -451,9 +453,24 @@ def main():
             if args.test:
                 train_instances = prepare_earmark_data.load_instances(args.train)
                 test_instances = prepare_earmark_data.load_instances(args.test)
+
+
                 groups = set(train_instances[0].feature_groups.keys()).intersection(test_instances[0].feature_groups.keys())
-                X_train, y_train, feature_space = pipe.instances_to_matrix(train_instances, dense = dense, groups = groups)
+
+                X_train, y_train, train_feature_space = pipe.instances_to_matrix(train_instances, dense = dense, groups = groups)
+                X_test, y_test, test_feature_space = pipe.instances_to_matrix(train_instances, dense = dense, groups = groups)
+
+
+                keys_train = set(train_feature_space.keys())
+                keys_test = set(test_feature_space.keys())
+                intersection = list(keys_train & keys_train)
+                feature_space = {intersection[i]:i for i in range(len(intersection))}
+                X_train, y_train = test_instances_to_matrix(feature_space, train_instances, dense = dense)
                 X_test, y_test = test_instances_to_matrix(feature_space, test_instances, dense = dense)
+
+
+
+        
                 
 
             else:

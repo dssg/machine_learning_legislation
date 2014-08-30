@@ -14,7 +14,7 @@ import re
 from classification.feature import Feature
 import csv
 from os.path import expanduser
-from matching.string_functions import normalize
+from matching.string_functions import normalize, normalize_no_lower, tokenize
 
 
 
@@ -110,7 +110,7 @@ class geo_feature_generator:
         instance.feature_groups[self.name] = {}
 
         s = instance.attributes["entity_inferred_name"]
-        tokens = normalize(s).split(' ')
+        tokens = tokenize(normalize_no_lower(s))
 
         
         

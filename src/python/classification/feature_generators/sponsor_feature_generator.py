@@ -14,12 +14,31 @@ class SponsorFeatureGenerator:
         self.feature_prefix = "SPONOSR_FEAUTURE_"
         self.sponsors = set()
 
-        absolute_path = os.path.dirname(os.path.abspath(__file__))
-        legislators_path = os.path.join(absolute_path,"../../../../data/legislators.csv")
+        #absolute_path = os.path.dirname(os.path.abspath(__file__))
+        #legislators_path = os.path.join(absolute_path,"../../../../data/legislators.csv")
 
-        for row in csv.reader(open(legislators_path, 'rU')):
-            self.sponsors.add(row[0])
-        self.sponsors = self.sponsors.difference(set(['Law', 'Page', 'New', 'Fort', 'Camp', 'Field']))
+        #for row in csv.reader(open(legislators_path, 'rU')):
+        #    self.sponsors.add(row[0])
+        #self.sponsors = self.sponsors.difference(set(['Law', 'Page', 'New', 'Fort', 'Camp', 'Field']))
+
+        absolute_path = os.path.dirname(os.path.abspath(__file__))
+        senator_path = os.path.join(absolute_path, "../../../../data/senators.csv")
+
+        for row in csv.reader(open(senator_path, 'r')):
+            congress = int(row[0])
+            if congress > 109:
+                sen = re.split('[:;, ]', row[1])[0].title()
+                if sen.isalpha():
+                    self.sponsors.add(sen)
+
+
+        rep_path = os.path.join(absolute_path, "../../../../data/representatives.csv")
+        for row in csv.reader(open(rep_path, 'r')):
+            congress = int(row[0])
+            if congress > 109:
+                rep = re.split('[:;, ]', row[1])[0].title()
+                if rep.isalpha():
+                    self.sponsors.add(rep)
 
     def operate(self,instance):
         """                                                                               
