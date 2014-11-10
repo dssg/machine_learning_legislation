@@ -1,3 +1,13 @@
+relevant_packages <- c('maps','maptools','RColorBrewer','classInt')
+for (package in relevant_packages){
+  install.packages(package)
+}
+
+library(maps)
+library(maptools)
+library(RColorBrewer) 
+library(classInt) 
+
 round2 <- function(x){
   return(round(x,2))
 }
