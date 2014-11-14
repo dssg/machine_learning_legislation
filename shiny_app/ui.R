@@ -15,12 +15,16 @@ shinyUI(fluidPage(
       
       selectInput("var", 
                   label = "Choose a Congress to Display",
-                  choices = c("104th Congress","105th Congress",
-                              "106th Congress", "107th Congress", 
-                              "108th Congress", "109th Congress", 
-                              "110th Congress", "111th Congress",
-                              "All"),
-                  selected = "All")
+                  choices = c("104th Congress (1995-1997)",
+                              "105th Congress (1997-1999)",
+                              "106th Congress (1999-2001)", 
+                              "107th Congress (2001-2003)", 
+                              "108th Congress (2003-2005)", 
+                              "109th Congress (2005-2007)", 
+                              "110th Congress (2007-2009)", 
+                              "111th Congress (2009-2010)", 
+                              "1995-2010"),
+                  selected = "1995-2010")
       
       
       ),

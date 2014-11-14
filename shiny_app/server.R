@@ -1,4 +1,3 @@
-#setwd("~/Desktop/earmarks_shiny/")
 library(shiny)
 source("data/helpers.R")
 library(maps)
@@ -23,28 +22,28 @@ shinyServer(
     output$map <- renderPlot({
       if(input$type == "total"){
         incoming_cong <- switch(input$var, 
-                                "104th Congress"=congress_earmarks[,3],
-                                "105th Congress"=congress_earmarks[,4],
-                                "106th Congress"=congress_earmarks[,5], 
-                                "107th Congress"=congress_earmarks[,6], 
-                                "108th Congress"=congress_earmarks[,7], 
-                                "109th Congress"=congress_earmarks[,8], 
-                                "110th Congress"=congress_earmarks[,9], 
-                                "111th Congress"=congress_earmarks[,10],
-                                "All"=congress_earmarks[,11])
+                                "104th Congress (1995-1997)"=congress_earmarks[,3],
+                                "105th Congress (1997-1999)"=congress_earmarks[,4],
+                                "106th Congress (1999-2001)"=congress_earmarks[,5], 
+                                "107th Congress (2001-2003)"=congress_earmarks[,6], 
+                                "108th Congress (2003-2005)"=congress_earmarks[,7], 
+                                "109th Congress (2005-2007)"=congress_earmarks[,8], 
+                                "110th Congress (2007-2009)"=congress_earmarks[,9], 
+                                "111th Congress (2009-2010)"=congress_earmarks[,10],
+                                "1995-2010"=congress_earmarks[,11])
         
       }
       else{
         incoming_cong <- switch(input$var, 
-                                "104th Congress"=congress_earmarks[,12],
-                                "105th Congress"=congress_earmarks[,13],
-                                "106th Congress"=congress_earmarks[,14], 
-                                "107th Congress"=congress_earmarks[,15], 
-                                "108th Congress"=congress_earmarks[,16], 
-                                "109th Congress"=congress_earmarks[,17], 
-                                "110th Congress"=congress_earmarks[,18], 
-                                "111th Congress"=congress_earmarks[,19],
-                                "All"=congress_earmarks[,20])
+                                "104th Congress (1995-1997)"=congress_earmarks[,12],
+                                "105th Congress (1997-1999)"=congress_earmarks[,13],
+                                "106th Congress (1999-2001)"=congress_earmarks[,14], 
+                                "107th Congress (2001-2003)"=congress_earmarks[,15], 
+                                "108th Congress (2003-2005)"=congress_earmarks[,16], 
+                                "109th Congress (2005-2007)"=congress_earmarks[,17], 
+                                "110th Congress (2007-2009)"=congress_earmarks[,18], 
+                                "111th Congress (2009-2010)"=congress_earmarks[,19],
+                                "1995-2010"=congress_earmarks[,20])
       }
       
       if(input$type == "total"){
@@ -61,15 +60,15 @@ shinyServer(
     # Generate an HTML table view of the data
     output$table <- renderTable({
       table_cong <- switch(input$var, 
-                              "104th Congress"=104,
-                              "105th Congress"=105,
-                              "106th Congress"=106, 
-                              "107th Congress"=107, 
-                              "108th Congress"=108, 
-                              "109th Congress"=109, 
-                              "110th Congress"=110, 
-                              "111th Congress"=111,
-                              "All"="All")
+                           "104th Congress (1995-1997)"= 104,
+                           "105th Congress (1997-1999)"=105,
+                           "106th Congress (1999-2001)"= 106, 
+                           "107th Congress (2001-2003)" = 107, 
+                           "108th Congress (2003-2005)" = 108, 
+                           "109th Congress (2005-2007)" = 109, 
+                           "110th Congress (2007-2009)" = 110, 
+                           "111th Congress (2009-2010)" = 111,
+                            "1995-2010"="All")
       subset(congress_table,congress_table$Congress==table_cong)[,c(2:10)]
     })
     
